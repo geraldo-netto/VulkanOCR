@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Big artifacts (regenerate/download, not source)
+avafly-v0.3.0.tar.gz
+
+# Upstream clone: github.com/nihui/ncnn-android-ppocrv5
+nihui-port/
+
+# ncnn model weights (279M)
+PaddleOCR-ncnn-CPP/models/
+*.bin
+*.param
