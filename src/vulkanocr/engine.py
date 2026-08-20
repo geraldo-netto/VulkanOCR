@@ -72,17 +72,36 @@ class OcrModels:
 
 @dataclass(frozen=True, slots=True)
 class OcrLine:
-    """One recognised text line in original-image coordinates."""
+    """One recognised text line in original-image coordinates.
+
+    The box is an oriented rectangle, so its sides are named for what they
+    are: ``thickness`` is the stroke-to-stroke height of the text and
+    ``length`` its reading-direction extent. The fields were called
+    ``width``/``height`` once, and on a horizontal line reported width 54 and
+    height 356 — every consumer that drew an axis-aligned box from them got
+    it rotated a quarter turn. ``bounding_box()`` is the axis-aligned answer.
+    """
 
     text: str
     confidence: float
     box_score: float
     center_x: float
     center_y: float
-    width: float
-    height: float
+    thickness: float
+    length: float
     angle: float
     vertical: bool
+
+    def bounding_box(self) -> tuple[float, float, float, float]:
+        """Axis-aligned ``(left, top, right, bottom)`` enclosing the line."""
+        import cv2  # noqa: PLC0415 - only needed when somebody asks for a box
+        import numpy as np  # noqa: PLC0415
+
+        corners = cv2.boxPoints(
+            ((self.center_x, self.center_y), (self.thickness, self.length), self.angle)
+        )
+        xs, ys = np.asarray(corners)[:, 0], np.asarray(corners)[:, 1]
+        return float(xs.min()), float(ys.min()), float(xs.max()), float(ys.max())
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,8 +242,8 @@ class OcrEngine:
                     box_score=region.score,
                     center_x=region.center_x,
                     center_y=region.center_y,
-                    width=region.width,
-                    height=region.height,
+                    thickness=region.width,
+                    length=region.height,
                     angle=region.angle,
                     vertical=region.vertical,
                 )

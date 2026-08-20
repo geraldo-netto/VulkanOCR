@@ -50,3 +50,27 @@ def test_unclip_grows_a_line_by_roughly_three_quarters_of_its_height():
     offset = unclip_offset(16.0, 400.0)
     assert 11.0 < offset < 12.0
     assert unclip_offset(0.0, 0.0) == 0.0
+
+
+def test_a_horizontal_lines_bounding_box_is_wider_than_it_is_tall():
+    """`width`/`height` were the rect's short/long sides: a horizontal line
+    reported width 54, height 356, and an axis-aligned box drawn from them
+    came out rotated a quarter turn (VOCR-0003)."""
+    from vulkanocr.engine import OcrLine
+
+    line = OcrLine(
+        text="Vulkan 1234",
+        confidence=0.9,
+        box_score=0.9,
+        center_x=240.0,
+        center_y=52.0,
+        thickness=54.0,
+        length=356.0,
+        angle=90.0,
+        vertical=False,
+    )
+    left, top, right, bottom = line.bounding_box()
+
+    assert (right - left) > (bottom - top)
+    assert abs((right + left) / 2 - 240.0) < 1e-3
+    assert abs((bottom + top) / 2 - 52.0) < 1e-3
