@@ -1,5 +1,12 @@
 # OMNI-0351 P0 spike — findings (2026-08-15)
 
+> **Historical record.** This is the spike's original report, kept as
+> evidence of what was proved and what it cost. The layout it describes is
+> the spike folder before this became a project: `spike_ocr.py` is deleted
+> (git history keeps it), the samples live in `samples/`, the engine in
+> `src/vulkanocr/`, and the two model clones are fetched at setup rather
+> than sitting in the tree. Current gaps live in `TODO.md`, not here.
+
 Half-day spike answering one question: does PaddleOCR-on-ncnn work on this host
 without touching either upstream? **Yes.** Working end-to-end OCR on the RX 6600
 XT in one session, no fork, no patch, no Paddle installed.
@@ -62,7 +69,10 @@ a separate, later, riskier row.
 ## Other gaps to carry into P1
 
 - **90° text unreadable** — PaddleOCR's angle classifier is a third model; the
-  port omits it. Either accept it or convert `PP-LCNet_x1_0_textline_ori`.
+  port omits it. The Avafly clone already ships two converted textline
+  orientation classifiers, so wiring one in is integration work, not a
+  conversion project (this line originally said "convert it" — that was
+  written before the clone was inspected).
 - **Icons read as text** — glyph-font icons in the applet screenshot decoded as
   `花`, `回`, `88`. A confidence floor plus a CJK-in-Latin-context filter would
   drop them; needs a rule, not just a threshold.
