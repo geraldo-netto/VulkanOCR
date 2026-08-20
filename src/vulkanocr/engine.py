@@ -45,6 +45,18 @@ class OcrModels:
     blobs: tuple = ("in0", "out0")
     dictionary_includes_blank: bool = False
 
+    @property
+    def ctc_offset(self) -> int:
+        """How class indices map to the dictionary: 0 when it carries the blank.
+
+        Getting this wrong does not crash — it shifts every character by one
+        and produces fluent-looking nonsense — and the ternary that derives it
+        used to be written out at eight call sites, each an independent chance
+        to invert it. It is a fact about the port, so it lives with the rest
+        of the port's facts.
+        """
+        return 0 if self.dictionary_includes_blank else 1
+
     def validated(self) -> OcrModels:
         for path in (
             self.det_param,
@@ -136,7 +148,7 @@ class OcrEngine:
                 patch,
                 self._characters,
                 self._models.blobs,
-                0 if self._models.dictionary_includes_blank else 1,
+                self._models.ctc_offset,
             )
             if not text:
                 continue

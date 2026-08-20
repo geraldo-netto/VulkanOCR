@@ -65,7 +65,7 @@ def pack(crops):
 
 
 def batched_texts(engine, crops, group):
-    offset = 0 if engine._models.dictionary_includes_blank else 1
+    offset = engine._models.ctc_offset
     texts = []
     for start in range(0, len(crops), group):
         chunk = crops[start : start + group]
@@ -83,7 +83,7 @@ def batched_texts(engine, crops, group):
 
 
 def single_texts(engine, crops):
-    offset = 0 if engine._models.dictionary_includes_blank else 1
+    offset = engine._models.ctc_offset
     return [decode_ctc(logits_for(engine, crop), engine._characters, offset)[0] for crop in crops]
 
 

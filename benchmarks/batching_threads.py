@@ -35,7 +35,7 @@ def crops_of(engine, rgb):
 
 
 def sequential(engine, patches):
-    offset = 0 if engine._models.dictionary_includes_blank else 1
+    offset = engine._models.ctc_offset
     return [
         recognise_patch(
             engine._runtime, engine._rec, patch, engine._characters, engine._models.blobs, offset
@@ -46,7 +46,7 @@ def sequential(engine, patches):
 
 
 def concurrent(engine, patches, workers):
-    offset = 0 if engine._models.dictionary_includes_blank else 1
+    offset = engine._models.ctc_offset
 
     def one(item):
         _region, patch = item

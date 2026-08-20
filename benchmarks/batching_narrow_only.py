@@ -68,7 +68,7 @@ def read_packed(engine, crops, offset):
 image = sys.argv[1]
 rgb = load_rgb(image)
 engine = OcrEngine(models_for("v6-medium"))
-offset = 0 if engine._models.dictionary_includes_blank else 1
+offset = engine._models.ctc_offset
 regions = detect_regions(
     engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs
 )

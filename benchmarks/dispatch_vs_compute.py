@@ -50,7 +50,7 @@ def crops_of(engine):
 
 
 def recognise_all(engine, crops):
-    offset = 0 if engine._models.dictionary_includes_blank else 1
+    offset = engine._models.ctc_offset
     return [
         recognise_patch(
             engine._runtime, engine._rec, c, engine._characters, engine._models.blobs, offset
@@ -79,7 +79,7 @@ for model_set in ("v6-medium", "v6-tiny"):
 engine = build("v6-medium", False)
 crops = crops_of(engine)
 narrow = min(crops, key=lambda c: c.shape[1])
-offset = 0 if engine._models.dictionary_includes_blank else 1
+offset = engine._models.ctc_offset
 recognise_patch(
     engine._runtime, engine._rec, narrow, engine._characters, engine._models.blobs, offset
 )
