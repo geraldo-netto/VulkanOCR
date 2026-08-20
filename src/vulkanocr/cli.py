@@ -17,6 +17,8 @@ from pathlib import Path
 import cv2
 
 from vulkanocr import CATALOG, DEFAULT_MODEL, OcrEngine, models_for
+from vulkanocr.device import HardwareVulkanUnavailableError
+from vulkanocr.engine import OcrEngineError
 
 
 def gpu_busy_paths() -> list[Path]:
@@ -37,7 +39,12 @@ def sample_gpu_busy(stop: threading.Event, samples: dict[Path, list[int]]) -> No
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
-    parser.add_argument("--repeat", type=int, default=5, help="extra timed passes")
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=0,
+        help="extra timed passes for benchmarking (default: none — one read answers)",
+    )
     parser.add_argument(
         "--models",
         default=DEFAULT_MODEL,
@@ -51,7 +58,14 @@ def main() -> int:
         raise SystemExit(f"cannot read image: {arguments.image}")
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
-    engine = OcrEngine(models_for(arguments.models))
+    # A person at a terminal gets the refusal, not the machinery around it:
+    # a missing model, a missing ncnn wheel and a machine with no hardware
+    # Vulkan device are all states with a next step, and a traceback buries
+    # the sentence that names it.
+    try:
+        engine = OcrEngine(models_for(arguments.models))
+    except (OcrEngineError, HardwareVulkanUnavailableError) as error:
+        raise SystemExit(str(error)) from error
     print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")
     print(f"device: {engine.device_name}")
 
@@ -73,10 +87,13 @@ def main() -> int:
     stop.set()
     sampler.join(timeout=1)
 
-    print(
-        f"\nfirst read {first_ms:.0f} ms; warm reads "
-        f"median {statistics.median(timings):.0f} ms over {len(timings)} passes\n"
-    )
+    if timings:
+        print(
+            f"\nfirst read {first_ms:.0f} ms; warm reads "
+            f"median {statistics.median(timings):.0f} ms over {len(timings)} passes\n"
+        )
+    else:
+        print(f"\nread in {first_ms:.0f} ms\n")
     for line in result.lines:
         print(
             f"  ({line.center_x:5.0f},{line.center_y:5.0f}) conf={line.confidence:.2f}  {line.text}"
