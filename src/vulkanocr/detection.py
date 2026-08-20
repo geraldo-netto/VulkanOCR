@@ -29,7 +29,6 @@ BOX_THRESHOLD = 0.6
 ENLARGE_RATIO = 1.95
 UNCLIP_RATIO = 1.5
 MIN_SIZE_FACTOR = 3.0
-MAX_CANDIDATES = 1000
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,7 +122,11 @@ def _regions(
     bitmap = (probability > BINARY_THRESHOLD).astype(np.uint8) * 255
     contours, _ = cv2.findContours(bitmap, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     regions = []
-    for contour in contours[:MAX_CANDIDATES]:
+    # Every contour is considered. The reference bounded this at 1000, and
+    # with OpenCV's bottom-to-top contour order the slice threw away the top
+    # of exactly the noisy pages that exceed it; scoring a contour is a mask
+    # fill and a mean, cheap enough that the thresholds can do the rejecting.
+    for contour in contours:
         if len(contour) <= 2:
             continue
         score = _contour_score(probability, contour)
