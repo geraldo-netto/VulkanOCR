@@ -8,8 +8,8 @@ from vulkanocr.recognition import decode_ctc
 CHARS = ("a", "b", "c")
 
 
-def logits(*steps):
-    out = np.full((len(steps), 4), -10.0, dtype=np.float32)
+def logits(*steps, classes=4):
+    out = np.full((len(steps), classes), -10.0, dtype=np.float32)
     for row, (index, score) in enumerate(steps):
         out[row, index] = score
     return out
@@ -53,6 +53,19 @@ def test_offset_zero_reads_dictionaries_that_carry_the_blank():
 
 
 def test_the_wrong_offset_shifts_every_character():
-    with_blank = ("", "a", "b", "c")
-    shifted, _ = decode_ctc(logits((1, 5), (0, 5), (2, 5)), with_blank, offset=1)
-    assert shifted == "a"  # "" then "a": the blank entry silently eats a class
+    """The failure mode is a systematic shift, so the test asserts a shift.
+
+    The old assertion decoded two classes and checked one letter — it passed
+    for truncation as readily as for the shift it is named after. Three
+    non-adjacent classes make the displacement visible end to end.
+    """
+    characters = ("", "a", "b", "c", "d", "e")
+    steps = logits((1, 5), (3, 5), (5, 5), classes=6)
+
+    right, _ = decode_ctc(steps, characters, offset=0)
+    wrong, _ = decode_ctc(steps, characters, offset=1)
+
+    assert right == "ace"
+    # With the wrong offset class 1 becomes the blank and every survivor
+    # decodes as its neighbour: fluent-looking, systematically off by one.
+    assert wrong == "bd"
