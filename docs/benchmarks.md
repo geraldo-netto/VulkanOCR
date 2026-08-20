@@ -36,8 +36,8 @@ reproduces that crippled configuration; the default is upstream's fair fight.
 
 | engine | device | CER | WER | exact | p50 | p95 |
 | --- | --- | --- | --- | --- | --- | --- |
-| vulkanocr/v6-medium | RX 6600 XT | 0.0154 | **0.0379** | **75 %** | 97 ms | 124 ms |
-| vulkanocr/v6-medium+fp16 | RX 6600 XT | 0.0154 | **0.0379** | **75 %** | **67 ms** | 86 ms |
+| vulkanocr/v6-medium | RX 6600 XT | 0.0154 | **0.0379** | 75 % | 97 ms | 124 ms |
+| vulkanocr/v6-medium+fp16 | RX 6600 XT | 0.0154 | **0.0379** | 75 % | **67 ms** | 86 ms |
 | paddleocr 3.7.0 / paddle 3.2.2 / oneDNN | CPU | 0.0154 | 0.0498 | 73 % | 184 ms | 223 ms |
 | vulkanocr/v6-tiny | RX 6600 XT | 0.0163 | 0.0660 | 60 % | 22 ms | 35 ms |
 | vulkanocr/v5-mobile | RX 6600 XT | 0.0405 | 0.1104 | 51 % | 45 ms | 76 ms |
@@ -48,6 +48,14 @@ rows isolate the port and the backend: character accuracy is identical, word
 accuracy slightly better here (segmentation), and the GPU is ~2× faster wall
 clock at fp32, ~2.7× at fp16, which measured no accuracy cost (CER identical
 to the fourth decimal).
+
+The exact-match rows are 41 vs 40 images of 55 — one image, inside the noise
+of a corpus this size, so exactness reads as equivalent rather than a win.
+The three tie-breaking images are instructive, though: PaddleOCR's two misses
+are classic confusions (`O gato` as `0 gato` in a monospace face, an
+underscore lost to σ25 noise), ours is two hallucinated Portuguese accents at
+16 px (`subíu`, `fría`) — the thin-stroke weakness the unclip change shrank
+but did not eliminate.
 
 Per-degradation CER, from the same run:
 

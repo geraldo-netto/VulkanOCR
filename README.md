@@ -12,7 +12,7 @@ same PP-OCRv6 graphs on the GPU through ncnn, at the same accuracy:
 | --- | --- | --- |
 | character error rate | 0.0154 | 0.0154 |
 | word error rate | **0.0379** | 0.0498 |
-| images read perfectly | **75 %** | 73 % |
+| images read perfectly | 75 % | 73 % — 41 vs 40 of 55, equivalent |
 | median page | **97 ms** (67 ms with fp16) | 184 ms |
 | CPU time per dense page | **~1.4 s** | ~12.0 s |
 
