@@ -100,6 +100,8 @@ class OcrEngine:
         *,
         runtime: Any = None,
         target_size: int = DEFAULT_TARGET_SIZE,
+        use_vulkan: bool = True,
+        use_fp16: bool = False,
     ):
         """`runtime` is the ncnn module, or anything shaped like it.
 
@@ -116,6 +118,11 @@ class OcrEngine:
         self._runtime: Any = runtime
         self._models = models.validated()
         self._target_size = int(target_size)
+        # Constructor knobs rather than a subclass seam: two benchmarks used
+        # to override _load_net for exactly these two flags, and both copies
+        # dropped the load-return checks and the device pinning on the way.
+        self._use_vulkan = bool(use_vulkan)
+        self._use_fp16 = bool(use_fp16)
         self._device = select_hardware_device(runtime)
         self._characters = self._load_dictionary(models.dictionary)
         self._det = None
@@ -228,11 +235,12 @@ class OcrEngine:
     def _load_net(self, param: Path):
         net = self._runtime.Net()
         loaded = False
-        net.opt.use_vulkan_compute = True
-        net.opt.use_fp16_packed = False
-        net.opt.use_fp16_storage = False
-        net.opt.use_fp16_arithmetic = False
-        net.set_vulkan_device(self._device.index)
+        net.opt.use_vulkan_compute = self._use_vulkan
+        net.opt.use_fp16_packed = self._use_fp16
+        net.opt.use_fp16_storage = self._use_fp16
+        net.opt.use_fp16_arithmetic = self._use_fp16
+        if self._use_vulkan:
+            net.set_vulkan_device(self._device.index)
         try:
             if net.load_param(str(param)) != 0:
                 raise OcrEngineError("model-invalid", f"cannot parse ncnn param: {param}")

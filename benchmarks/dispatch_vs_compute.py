@@ -25,20 +25,7 @@ rgb = load_rgb(image)
 
 
 def build(model_set, fp16):
-    class Tuned(OcrEngine):
-        def _load_net(self, param_path):
-            net = ncnn_runtime.Net()
-            net.opt.use_vulkan_compute = True
-            net.opt.use_fp16_packed = fp16
-            net.opt.use_fp16_storage = fp16
-            net.opt.use_fp16_arithmetic = fp16
-            net.load_param(str(param_path))
-            net.load_model(str(param_path.with_suffix(".bin")))
-            net.opt.use_vulkan_compute = True
-            return net
-
-    engine = Tuned(models_for(model_set))
-    return engine
+    return OcrEngine(models_for(model_set), use_fp16=fp16)
 
 
 def crops_of(engine):
