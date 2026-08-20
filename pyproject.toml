@@ -17,11 +17,15 @@ classifiers = [
 ]
 # opencv is named explicitly rather than relied on as an ncnn transitive: the
 # detection and crop paths import it directly, so a future ncnn wheel that
-# dropped it would fail at read time instead of at resolve time.
+# dropped it would fail at read time instead of at resolve time. It is also
+# bounded above: `_oriented` normalises `minAreaRect` angles, whose convention
+# OpenCV has changed between major releases before — the [-90, 0) convention
+# is what the geometry tests pin, against the 4.x/5.x lines this was verified
+# on. A new major gets admitted by running those tests, not by luck.
 dependencies = [
     "ncnn>=1.0.20240102",
     "numpy>=1.24",
-    "opencv-python-headless>=4.9",
+    "opencv-python-headless>=4.9,<6",
 ]
 
 [project.optional-dependencies]
