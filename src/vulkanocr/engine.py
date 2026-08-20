@@ -18,7 +18,6 @@ from .device import select_hardware_device
 from .recognition import crop_region, decode_ctc, patch_logits, recognise_patch
 
 DEFAULT_TARGET_SIZE = 640
-MAX_IMAGE_PIXELS = 64_000_000
 
 
 class OcrEngineError(RuntimeError):
@@ -225,8 +224,6 @@ class OcrEngine:
             raise OcrEngineError("image-invalid", "expected an RGB HxWx3 array")
         if rgb.dtype != np.uint8:
             raise OcrEngineError("image-invalid", "expected uint8 pixels")
-        if rgb.shape[0] * rgb.shape[1] > MAX_IMAGE_PIXELS:
-            raise OcrEngineError("image-too-large", "image exceeds the pixel bound")
 
     def read(self, rgb: np.ndarray) -> OcrResult:
         """Recognise every text line in an RGB uint8 array."""
