@@ -8,13 +8,20 @@ Upstream PaddleOCR is CUDA or CPU. On this machine's Radeon RX 6600 XT
 false, so PaddleOCR runs on the processor and nothing else. VulkanOCR runs the
 same PP-OCRv6 graphs on the GPU through ncnn, at the same accuracy:
 
-| | VulkanOCR (GPU) | PaddleOCR 3.2.2 + oneDNN (CPU) |
+| | VulkanOCR (GPU) | PaddleOCR (CPU) |
 | --- | --- | --- |
-| character error rate | 0.0156 | 0.0154 |
-| word error rate | **0.0400** | 0.0498 |
-| images read perfectly | **76 %** | 73 % |
-| median page | **66 ms** | 199 ms |
+| character error rate | 0.0154 | 0.0154 |
+| word error rate | **0.0379** | 0.0498 |
+| images read perfectly | **75 %** | 73 % |
+| median page | **97 ms** (67 ms with fp16) | 184 ms |
 | CPU time per dense page | **~1.4 s** | ~12.0 s |
+
+Same PP-OCRv6_medium models on both sides. The PaddleOCR column is
+`paddleocr 3.7.0` on `paddlepaddle 3.2.2` with oneDNN on — its best CPU
+configuration; on paddlepaddle 3.3 the PIR→oneDNN converter refuses every
+PP-OCR graph, which is why the `bench` extra pins `<3.3`. Every row is
+produced by a committed runner and `benchmarks/compare_engines.py`, from one
+generation of the corpus.
 
 55 rendered pages with exact ground truth, five texts across eleven
 degradations — sizes, fonts, skew, blur, noise, JPEG and a faded scan. The

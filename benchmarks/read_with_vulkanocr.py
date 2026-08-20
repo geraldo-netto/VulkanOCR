@@ -49,7 +49,7 @@ def main() -> int:
             flush=True,
         )
 
-    out = corpus.parent / f"results-spike-{model_set}.json"
+    out = corpus.parent / f"results-vulkanocr-{model_set}{'-fp16' if fp16 else ''}.json"
     out.write_text(
         json.dumps(
             {

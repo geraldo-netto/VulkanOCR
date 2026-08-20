@@ -1,82 +1,90 @@
-# Benchmark and batching PoC (2026-08-20)
+# Benchmarks — how the published numbers were taken (2026-08-21)
 
-Two questions, both answered by measurement on this host: how the ncnn/Vulkan
-port compares with the engines it would replace, and whether batching the
-recognition pass is worth building.
-
-Everything here runs against the installed `vulkanocr` package. Nothing is installed into
-OmniTensor and nothing in `../mvp` was changed to make these run.
+Everything here is produced by committed runners in [`benchmarks/`](../benchmarks)
+against the engine as it stands, in one generation of the corpus. Nothing in
+this file is hand-run: if a number cannot be reproduced by a script, it is not
+here.
 
 ## The corpus
 
-`benchmarks/make_corpus.py` renders 5 texts × 11 degradations = 55 images with exact
-ground truth: three sizes, three fonts, 5° and 12° skew, blur, noise, JPEG
-q30, and a faded scan. Synthetic on purpose — a comparison needs identical
-inputs and exact truth for every engine, and a hand-transcribed scan holdout
-is days of work. It is the trade this makes, and the acceptance corpus
-OMNI-0509 asks for is still the honest one.
+`benchmarks/make_corpus.py` renders 5 texts × 11 degradations = 55 images with
+exact ground truth: three sizes, three fonts, 5° and 12° skew, blur, noise,
+JPEG q30, and a faded scan. Synthetic on purpose — a comparison needs
+identical inputs and exact truth for every engine. A hand-transcribed scan
+holdout is still the honest acceptance corpus; this is not it and says so.
 
-`benchmarks/scoring.py` scores a read: CER and WER as total edit distance over total
-length (never a mean of per-image rates), whitespace-normalised, reading order
-ignored — a caller consumes the text, not the box order.
+`benchmarks/scoring.py` scores a read: CER and WER as total edit distance over
+total length (never a mean of per-image rates), whitespace-normalised, NFC,
+reading order ignored. It is unit-tested in `tests/test_scoring.py`.
 
 ```sh
-.venv/bin/python benchmarks/make_corpus.py /tmp/ocrcorpus
-.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/ocrcorpus v6-medium
-python3 benchmarks/read_with_tesseract.py /tmp/ocrcorpus 6
-<paddle venv>/bin/python benchmarks/read_with_paddleocr.py /tmp/ocrcorpus
+.venv/bin/python benchmarks/make_corpus.py /tmp/corpus
+.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium
+.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --fp16
+python3 benchmarks/read_with_tesseract.py /tmp/corpus 6
+<paddle-venv>/bin/python benchmarks/read_with_paddleocr.py /tmp/corpus
 python3 benchmarks/compare_engines.py /tmp
 ```
 
-## Accuracy and speed
+The Paddle virtualenv installs the `bench` extra's pins: `paddlepaddle>=3.2,<3.3`.
+On 3.3.1 the PIR→oneDNN instruction converter fails on a `conv2d` attribute
+(`ConvertPirAttribute2RuntimeAttribute not support`), for every PP-OCR graph,
+with no flag or blocklist that avoids it — bisected to the op. `--no-mkldnn`
+reproduces that crippled configuration; the default is upstream's fair fight.
+
+## Results — all engines, same 55 images, same scorer
 
 | engine | device | CER | WER | exact | p50 | p95 |
 | --- | --- | --- | --- | --- | --- | --- |
-| PaddleOCR 3.7.0 (PP-OCRv5 mobile) | CPU | 0.0154 | 0.0498 | 73% | 1345 ms | 1638 ms |
-| spike v6-medium | RX 6600 XT | 0.0223 | 0.0942 | 51% | 114 ms | 142 ms |
-| spike v6-medium, fp16 | RX 6600 XT | 0.0225 | 0.0952 | 51% | 82 ms | 113 ms |
-| spike v6-tiny | RX 6600 XT | 0.0256 | 0.1429 | 24% | 24 ms | 32 ms |
-| Tesseract 5.3.4 psm6 | CPU | 0.0459 | 0.1255 | 58% | 98 ms | 111 ms |
-| spike v5-mobile | RX 6600 XT | 0.0642 | 0.2922 | 22% | 50 ms | 76 ms |
+| vulkanocr/v6-medium | RX 6600 XT | 0.0154 | **0.0379** | **75 %** | 97 ms | 124 ms |
+| vulkanocr/v6-medium+fp16 | RX 6600 XT | 0.0154 | **0.0379** | **75 %** | **67 ms** | 86 ms |
+| paddleocr 3.7.0 / paddle 3.2.2 / oneDNN | CPU | 0.0154 | 0.0498 | 73 % | 184 ms | 223 ms |
+| vulkanocr/v6-tiny | RX 6600 XT | 0.0163 | 0.0660 | 60 % | 22 ms | 35 ms |
+| vulkanocr/v5-mobile | RX 6600 XT | 0.0405 | 0.1104 | 51 % | 45 ms | 76 ms |
+| tesseract 5.3.4 psm6 | CPU | 0.0459 | 0.1255 | 58 % | 93 ms | 107 ms |
 
-Dense UI page (`samples/sample-applet.png`, 585×770): Tesseract 264 ms wall / 827 ms
-CPU; spike v6-medium 727 ms wall / 1443 ms CPU; PaddleOCR 8995 ms wall /
-**89270 ms CPU**. PaddleOCR on this desk is CPU-only —
-`is_compiled_with_cuda()` and `is_compiled_with_rocm()` are both false and
-Paddle has no Vulkan backend — so the port is not a faster PaddleOCR, it is
-the only way to put OCR on this GPU at all.
+Same PP-OCRv6_medium det+rec graphs behind the first three rows, so those
+rows isolate the port and the backend: character accuracy is identical, word
+accuracy slightly better here (segmentation), and the GPU is ~2× faster wall
+clock at fp32, ~2.7× at fp16, which measured no accuracy cost (CER identical
+to the fourth decimal).
+
+Per-degradation CER, from the same run:
+
+| variant | v6-medium | +fp16 | paddle+oneDNN | tesseract |
+| --- | --- | --- | --- | --- |
+| clean 28px sans | 0.006 | 0.006 | 0.006 | 0.011 |
+| clean 12px sans | 0.006 | 0.006 | 0.006 | 0.027 |
+| blur 5px | 0.000 | 0.000 | 0.000 | 0.011 |
+| noise σ25 | 0.000 | 0.000 | 0.002 | 0.011 |
+| JPEG q30 | 0.006 | 0.006 | 0.004 | 0.011 |
+| faded 40 % | 0.002 | 0.002 | 0.006 | 0.011 |
+| skew 5° | 0.000 | 0.000 | 0.000 | 0.032 |
+| skew 12° | 0.143 | 0.143 | 0.131 | 0.335 |
+
+## CPU cost, dense real page
+
+`../samples/sample-applet.png`, 585×770 of 12 px UI text: vulkanocr ~671 ms
+wall / ~1.4 s CPU; PaddleOCR + oneDNN ~1.2 s wall / ~12.0 s CPU; with oneDNN
+off (the 3.3 regression's configuration) ~9-10 s wall / ~90-100 s CPU.
+PaddleOCR cannot use this GPU at all: `is_compiled_with_cuda()` and
+`is_compiled_with_rocm()` are both false, and Paddle has no Vulkan backend.
 
 ## That it really is Vulkan
 
-`gpu_proof.py` reads this process's own amdgpu counters: **+1314 ms of
-`drm-engine-compute` per 750 ms read**, 721 MiB of VRAM and 106 MiB of GTT
-held. `vulkan_vs_cpu.py` runs the same models with `use_vulkan_compute` off:
-759 ms on Vulkan against 1211 ms on ncnn's CPU lane, identical output.
-`phase_timings.py` shows 748 of 752 ms inside the nets — 39 ms detection (one
-call) and 708 ms recognition (46 calls).
+`benchmarks/gpu_proof.py` reads this process's own amdgpu fdinfo counters:
+~1.2-1.3 s of `drm-engine-compute` per ~700 ms read, ~721 MiB VRAM held.
+`benchmarks/vulkan_vs_cpu.py` runs the same models with the Vulkan knob off:
+identical output, GPU ~1.6× faster for v6-medium. `benchmarks/phase_timings.py`
+splits a read: ~38 ms detection, ~1 ms cropping, ~600 ms recognition —
+46 sequential net calls, which is where the batching question came from.
 
-## The batching PoC: three attempts, all negative
+## Batching: measured, negative
 
-| attempt | script | result |
-| --- | --- | --- |
-| concurrent extractors, 2–16 threads | `batching_threads.py` | 0.96–0.99× — no gain. The Python binding serialises; text identical, so it is safe, just pointless |
-| pack every crop into one wide strip | `batching_one_strip.py` | 1.01–1.05×, and **only 37/46 lines identical** — the encoder mixes across the strip, so the decode is wrong |
-| pack only crops narrower than N | `batching_narrow_only.py` | 664–795 ms against a 734 ms baseline, inside the noise, still 44/46 identical |
-
-`dispatch_vs_compute.py` explains it. Per-call overhead is ~5.1 ms: the smallest
-crop (43 px) costs 6.5 ms, while the same content 20× wider costs 28.9 ms in
-one call against 130.3 ms as twenty. So dispatch overhead is real — but this
-page's crops run to 1088 px, and at 902 ms/MPix the arithmetic dominates the
-total. Packing then adds gap columns and loses lines to cross-talk, which is
-why the measured gain is nil.
-
-## What does pay
-
-| lever | measured |
-| --- | --- |
-| fp16 on v6-medium | recognition 735 → 492 ms (**1.49×**); corpus p50 114 → 82 ms; CER 0.0223 → 0.0225 — **unchanged inside noise** |
-| v6-tiny instead of v6-medium | recognition 735 → 151 ms (**4.9×**) at CER 0.0223 → 0.0256 |
-
-fp16 is disabled here to match the service's Vulkan policy. On this workload
-that policy costs a third of the wall clock and buys no accuracy, which is a
-decision worth taking deliberately rather than by inheritance.
+Three attempts, all in [`benchmarks/`](../benchmarks): concurrent extractors
+(0.9-1.0×, the binding serialises), packing every crop into one strip
+(≤1.35×, and it corrupts lines — the encoder mixes across the strip), packing
+only narrow crops (inside the noise). `dispatch_vs_compute.py` explains it:
+per-call overhead ~5 ms, but wide crops are compute-bound at ~900 ms/MPix
+fp32. What actually pays is fp16 (1.5× on recognition, no measured accuracy
+cost) and the model tier (v6-tiny is 4.5× v6-medium at +0.001 CER).
