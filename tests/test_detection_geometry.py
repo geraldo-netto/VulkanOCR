@@ -74,3 +74,17 @@ def test_a_horizontal_lines_bounding_box_is_wider_than_it_is_tall():
     assert (right - left) > (bottom - top)
     assert abs((right + left) / 2 - 240.0) < 1e-3
     assert abs((bottom + top) / 2 - 52.0) < 1e-3
+
+
+def test_each_axis_maps_back_through_its_own_ratio():
+    """A 4001x4000 image resizes to 640x639: the y axis's real ratio is
+    639/4000, and mapping through the x ratio drifted the bottom ~5 px."""
+    from vulkanocr.detection import _scaled
+
+    width, height, _scale = _scaled(4001, 4000, 640)
+
+    assert (width, height) == (640, 639)
+    bottom_via_own = (height - 1) / (height / 4000)
+    bottom_via_x = (height - 1) / (width / 4001)
+    assert abs(bottom_via_x - bottom_via_own) > 4.0  # the bug's size
+    assert abs(bottom_via_own - 3993.7) < 0.1  # its own ratio lands right

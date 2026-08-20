@@ -58,6 +58,12 @@ def detect_regions(
     """
     image_height, image_width = rgb.shape[:2]
     width, height, scale = _scaled(image_width, image_height, target_size)
+    # Each axis maps back through the ratio it was actually resized by. The
+    # minor axis is truncated to an integer above, so its true ratio differs
+    # from `scale`; mapping y through the x ratio drifted boxes ~5 px on a
+    # 4001x4000 image.
+    scale_x = width / image_width
+    scale_y = height / image_height
 
     mat = runtime.Mat.from_pixels_resize(
         np.ascontiguousarray(rgb),
@@ -92,7 +98,7 @@ def detect_regions(
     finally:
         del extractor
 
-    return _regions(probability, scale, wpad, hpad)
+    return _regions(probability, scale, scale_x, scale_y, wpad, hpad)
 
 
 def _scaled(width: int, height: int, target_size: int) -> tuple[int, int, float]:
@@ -106,7 +112,14 @@ def _scaled(width: int, height: int, target_size: int) -> tuple[int, int, float]
     return width, height, scale
 
 
-def _regions(probability: np.ndarray, scale: float, wpad: int, hpad: int) -> list[TextRegion]:
+def _regions(
+    probability: np.ndarray,
+    scale: float,
+    scale_x: float,
+    scale_y: float,
+    wpad: int,
+    hpad: int,
+) -> list[TextRegion]:
     bitmap = (probability > BINARY_THRESHOLD).astype(np.uint8) * 255
     contours, _ = cv2.findContours(bitmap, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     regions = []
@@ -125,8 +138,8 @@ def _regions(probability: np.ndarray, scale: float, wpad: int, hpad: int) -> lis
         rh += 2.0 * offset
         regions.append(
             TextRegion(
-                center_x=(cx - wpad // 2) / scale,
-                center_y=(cy - hpad // 2) / scale,
+                center_x=(cx - wpad // 2) / scale_x,
+                center_y=(cy - hpad // 2) / scale_y,
                 width=rw / scale,
                 height=rh / scale,
                 angle=angle,
