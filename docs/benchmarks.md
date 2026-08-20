@@ -87,6 +87,18 @@ identical output, GPU ~1.6× faster for v6-medium. `benchmarks/phase_timings.py`
 splits a read: ~38 ms detection, ~1 ms cropping, ~600 ms recognition —
 46 sequential net calls, which is where the batching question came from.
 
+## The hallucinated accent: measured, also negative
+
+The one tie-breaking image we miss (`subíu`/`fría` for 16 px `subiu`/`fria`)
+looked like a preprocessing bug: on that single crop, cubic or Lanczos
+resampling reads it clean where the fused bilinear warp does not. But every
+global alternative regresses the corpus — cubic-on-upscale CER 0.0154→0.0159,
+Lanczos 0.0165, and rectifying at native size before a separate resize (the
+PaddleOCR reference's two-step shape) 0.0165 with an exact image lost. The
+model is near-tied on that crop (0.977 vs 0.970 confidence), and any kernel
+that flips it flips more elsewhere. The fused bilinear crop stays; fixing one
+image at the corpus's expense would be tuning the benchmark, not the engine.
+
 ## Batching: measured, negative
 
 Three attempts, all in [`benchmarks/`](../benchmarks): concurrent extractors
