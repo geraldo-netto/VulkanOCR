@@ -19,7 +19,7 @@ from vulkanocr.engine import OcrEngine
 def main() -> int:
     corpus = pathlib.Path(sys.argv[1])
     model_set = sys.argv[2]
-    cases = json.loads((corpus / "ground-truth.json").read_text())
+    cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
 
     engine = OcrEngine(models_for(model_set))
     rows = []
@@ -55,7 +55,8 @@ def main() -> int:
             {"engine": f"vulkanocr/{model_set}", "device": engine.device_name, "rows": rows},
             indent=2,
             ensure_ascii=False,
-        )
+        ),
+        encoding="utf-8",
     )
     print("device:", engine.device_name)
     return 0

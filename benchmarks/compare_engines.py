@@ -18,7 +18,7 @@ def main() -> int:
     print("-" * 86)
     summaries = []
     for path in files:
-        doc = json.loads(path.read_text())
+        doc = json.loads(path.read_text(encoding="utf-8"))
         rows = doc["rows"]
         cer = sum(r["char_distance"] for r in rows) / sum(r["char_length"] for r in rows)
         wer = sum(r["word_distance"] for r in rows) / sum(r["word_length"] for r in rows)

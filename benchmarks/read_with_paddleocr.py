@@ -25,7 +25,7 @@ from scoring import score
 
 def main() -> int:
     corpus = pathlib.Path(sys.argv[1])
-    cases = json.loads((corpus / "ground-truth.json").read_text())
+    cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
     ocr = PaddleOCR(
         lang="en",
         use_doc_orientation_classify=False,
@@ -67,7 +67,8 @@ def main() -> int:
             {"engine": "paddleocr-3.7.0/PP-OCRv5-mobile", "device": "CPU", "rows": rows},
             indent=2,
             ensure_ascii=False,
-        )
+        ),
+        encoding="utf-8",
     )
     return 0
 

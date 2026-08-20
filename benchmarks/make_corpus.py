@@ -128,7 +128,9 @@ def main() -> int:
             cv2.imwrite(str(OUT / f"{stem}.png"), array[:, :, ::-1])
             cases.append({"id": stem, "image": f"{stem}.png", "lines": lines, "variant": name})
 
-    (OUT / "ground-truth.json").write_text(json.dumps(cases, indent=2, ensure_ascii=False))
+    (OUT / "ground-truth.json").write_text(
+        json.dumps(cases, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"{len(cases)} images, {len(PARAGRAPHS)} texts x 11 variants -> {OUT}")
     return 0
 

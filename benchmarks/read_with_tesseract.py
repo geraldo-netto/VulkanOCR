@@ -15,7 +15,7 @@ from scoring import score
 def main() -> int:
     corpus = pathlib.Path(sys.argv[1])
     psm = sys.argv[2] if len(sys.argv) > 2 else "6"
-    cases = json.loads((corpus / "ground-truth.json").read_text())
+    cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
     rows = []
     subprocess.run(
         ["tesseract", str(corpus / cases[0]["image"]), "stdout", "-l", "eng", "--psm", psm],
@@ -50,7 +50,8 @@ def main() -> int:
             {"engine": f"tesseract-5.3.4/psm{psm}", "device": "CPU", "rows": rows},
             indent=2,
             ensure_ascii=False,
-        )
+        ),
+        encoding="utf-8",
     )
     return 0
 
