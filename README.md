@@ -45,7 +45,8 @@ docs/               benchmarks, engine notes, and the findings of the first pass
 samples/            the images the README and tests quote
 ```
 
-585 lines of engine, 231 of tests. Dependencies are `ncnn`, `numpy` and
+Under a thousand lines of engine, six hundred of tests — sizes that drift,
+so the claim is the shape, not a census. Dependencies are `ncnn`, `numpy` and
 `opencv` — no PaddlePaddle, no ONNX, no polygon clipper.
 
 ## Run it
