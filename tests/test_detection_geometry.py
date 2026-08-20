@@ -88,3 +88,20 @@ def test_each_axis_maps_back_through_its_own_ratio():
     bottom_via_x = (height - 1) / (width / 4001)
     assert abs(bottom_via_x - bottom_via_own) > 4.0  # the bug's size
     assert abs(bottom_via_own - 3993.7) < 0.1  # its own ratio lands right
+
+
+def test_a_trailing_newline_is_a_file_convention_not_a_character_class(tmp_path):
+    """The Avafly clone's ppocr_keys_v5 ends with a newline; the nihui copy
+    does not. Both must yield the same classes, and the final literal-space
+    class must survive (VOCR-0017)."""
+    from vulkanocr.engine import OcrEngine
+
+    bare = tmp_path / "bare.txt"
+    bare.write_bytes(b"a\nb\n ")
+    newline = tmp_path / "newline.txt"
+    newline.write_bytes(b"a\nb\n \n")
+
+    read_bare = OcrEngine._load_dictionary(bare)
+    read_newline = OcrEngine._load_dictionary(newline)
+
+    assert read_bare == read_newline == ("a", "b", " ")

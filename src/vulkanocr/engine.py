@@ -292,7 +292,18 @@ class OcrEngine:
 
     @staticmethod
     def _load_dictionary(path: Path) -> tuple[str, ...]:
-        characters = tuple(Path(path).read_text(encoding="utf-8").split("\n"))
+        """One class per line — including the final literal-space class.
+
+        Not ``splitlines()`` and not ``strip()``: every keys file ends with a
+        line holding a single ASCII space, and both would eat it, shifting
+        every decoded character by one. A trailing newline, though, is a file
+        convention rather than a class — the Avafly clone's ``ppocr_keys_v5``
+        has one and the packaged copy does not — so exactly one final empty
+        entry is dropped when present.
+        """
+        characters = Path(path).read_text(encoding="utf-8").split("\n")
+        if characters and characters[-1] == "":
+            characters.pop()
         if len(characters) < 2:
             raise OcrEngineError("dictionary-invalid", "dictionary has fewer than two classes")
-        return characters
+        return tuple(characters)
