@@ -105,8 +105,18 @@ class OcrLine:
 
 @dataclass(frozen=True, slots=True)
 class OcrResult:
+    """What one read produced, and what it declined to guess at.
+
+    ``lines`` holds only regions whose decode produced text; a detected box
+    that decoded to nothing is counted in ``undecoded_regions`` rather than
+    silently vanishing, so a caller can tell "clean page" from "the detector
+    saw something the recogniser could not read" — which is exactly how the
+    30°–60° rotation bug stayed invisible for as long as it did.
+    """
+
     device_name: str
     lines: tuple[OcrLine, ...]
+    undecoded_regions: int = 0
 
 
 class OcrEngine:
@@ -228,9 +238,11 @@ class OcrEngine:
     def read(self, rgb: np.ndarray) -> OcrResult:
         """Recognise every text line in an RGB uint8 array."""
         lines = []
+        undecoded = 0
         for region, patch in self.crops(rgb):
             text, confidence = self.recognise(patch)
             if not text:
+                undecoded += 1
                 continue
             lines.append(
                 OcrLine(
@@ -246,7 +258,9 @@ class OcrEngine:
                 )
             )
         lines.sort(key=lambda line: (line.center_y, line.center_x))
-        return OcrResult(device_name=self._device.name, lines=tuple(lines))
+        return OcrResult(
+            device_name=self._device.name, lines=tuple(lines), undecoded_regions=undecoded
+        )
 
     def _load_net(self, param: Path):
         net = self._runtime.Net()
