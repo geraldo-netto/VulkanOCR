@@ -32,15 +32,19 @@ def crop_region(rgb: np.ndarray, region) -> np.ndarray:
     )
 
 
-def recognise_patch(
+def patch_logits(
     runtime,
     net,
     patch: np.ndarray,
-    characters,
     blobs: tuple[str, str] = ("in0", "out0"),
-    offset: int = 1,
-) -> tuple[str, float]:
-    """Run the recognition net on one patch and greedy-decode the CTC output."""
+) -> np.ndarray:
+    """One 48-high strip through the recognition net, as raw CTC logits.
+
+    Split from :func:`recognise_patch` because the logits are a result in
+    their own right: the batching experiments in ``benchmarks/`` need to
+    decode *segments* of a packed strip, and while this half was fused to the
+    decode they each carried a byte-for-byte copy of it instead.
+    """
     height, width = patch.shape[:2]
     mat = runtime.Mat.from_pixels(
         np.ascontiguousarray(patch), runtime.Mat.PixelType.PIXEL_RGB2BGR, width, height
@@ -55,9 +59,19 @@ def recognise_patch(
         logits = np.array(out)
     finally:
         del extractor
-    if logits.ndim == 3:
-        logits = logits[0]
-    return decode_ctc(logits, characters, offset)
+    return logits[0] if logits.ndim == 3 else logits
+
+
+def recognise_patch(
+    runtime,
+    net,
+    patch: np.ndarray,
+    characters,
+    blobs: tuple[str, str] = ("in0", "out0"),
+    offset: int = 1,
+) -> tuple[str, float]:
+    """Run the recognition net on one patch and greedy-decode the CTC output."""
+    return decode_ctc(patch_logits(runtime, net, patch, blobs), characters, offset)
 
 
 def decode_ctc(logits: np.ndarray, characters, offset: int = 1) -> tuple[str, float]:

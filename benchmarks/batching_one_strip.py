@@ -23,7 +23,7 @@ from scoring import load_rgb
 from vulkanocr.catalog import models_for
 from vulkanocr.detection import detect_regions
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import MEAN, NORM, crop_region, decode_ctc
+from vulkanocr.recognition import crop_region, decode_ctc, patch_logits
 
 GAP = 32  # white columns between crops
 
@@ -36,21 +36,8 @@ def crops_of(engine, rgb):
 
 
 def logits_for(engine, strip):
-    height, width = strip.shape[:2]
-    mat = engine._runtime.Mat.from_pixels(
-        np.ascontiguousarray(strip), engine._runtime.Mat.PixelType.PIXEL_RGB2BGR, width, height
-    )
-    mat.substract_mean_normalize(MEAN, NORM)
-    extractor = engine._rec.create_extractor()
-    try:
-        extractor.input(engine._models.blobs[0], mat)
-        code, out = extractor.extract(engine._models.blobs[1])
-        if code != 0:
-            raise RuntimeError("extraction failed")
-        logits = np.array(out)
-    finally:
-        del extractor
-    return logits[0] if logits.ndim == 3 else logits
+    """The engine's own preprocessing and extraction, on one packed strip."""
+    return patch_logits(engine._runtime, engine._rec, strip, engine._models.blobs)
 
 
 def pack(crops):
