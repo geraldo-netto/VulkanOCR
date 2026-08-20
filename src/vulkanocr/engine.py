@@ -118,12 +118,41 @@ class OcrEngine:
         self._target_size = int(target_size)
         self._device = select_hardware_device(runtime)
         self._characters = self._load_dictionary(models.dictionary)
-        self._det = self._load_net(models.det_param)
-        self._rec = self._load_net(models.rec_param)
+        self._det = None
+        self._rec = None
+        try:
+            self._det = self._load_net(models.det_param)
+            self._rec = self._load_net(models.rec_param)
+        except BaseException:
+            # A recognition graph that refuses to load must not strand the
+            # detection net's ~hundreds of MiB of Vulkan allocations on an
+            # object the caller never receives.
+            self.close()
+            raise
 
     @property
     def device_name(self) -> str:
         return self._device.name
+
+    def close(self) -> None:
+        """Release both nets and their Vulkan allocations.
+
+        An engine holds on the order of 700 MiB of VRAM (measured in
+        docs/benchmarks.md), and nothing freed it before: a benchmark that
+        built engines in a loop accumulated one device's worth per pass.
+        Safe to call twice, and called for you by the context manager.
+        """
+        for name in ("_det", "_rec"):
+            net = getattr(self, name, None)
+            if net is not None:
+                net.clear()
+                setattr(self, name, None)
+
+    def __enter__(self) -> OcrEngine:
+        return self
+
+    def __exit__(self, *_exception) -> None:
+        self.close()
 
     def detect(self, rgb: np.ndarray) -> list:
         """The text regions on one validated RGB image, unrecognised.
@@ -198,15 +227,21 @@ class OcrEngine:
 
     def _load_net(self, param: Path):
         net = self._runtime.Net()
+        loaded = False
         net.opt.use_vulkan_compute = True
         net.opt.use_fp16_packed = False
         net.opt.use_fp16_storage = False
         net.opt.use_fp16_arithmetic = False
         net.set_vulkan_device(self._device.index)
-        if net.load_param(str(param)) != 0:
-            raise OcrEngineError("model-invalid", f"cannot parse ncnn param: {param}")
-        if net.load_model(str(param.with_suffix(".bin"))) != 0:
-            raise OcrEngineError("model-invalid", f"cannot load ncnn weights for: {param}")
+        try:
+            if net.load_param(str(param)) != 0:
+                raise OcrEngineError("model-invalid", f"cannot parse ncnn param: {param}")
+            if net.load_model(str(param.with_suffix(".bin"))) != 0:
+                raise OcrEngineError("model-invalid", f"cannot load ncnn weights for: {param}")
+            loaded = True
+        finally:
+            if not loaded:
+                net.clear()
         return net
 
     @staticmethod

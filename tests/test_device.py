@@ -18,6 +18,10 @@ class FakeInfo:
 
 
 class FakeRuntime:
+    # Set per test when the engine's loader is under test; typed loosely
+    # because each test assigns its own fake class.
+    Net: object = None
+
     def __init__(self, devices):
         self._devices = devices
 
@@ -53,3 +57,81 @@ def test_no_devices_is_a_refusal():
 def test_first_of_equal_ranks_is_deterministic():
     runtime = FakeRuntime([FakeInfo("dGPU-a", 0), FakeInfo("dGPU-b", 0)])
     assert select_hardware_device(runtime).name == "dGPU-a"
+
+
+class _FakeNet:
+    def __init__(self):
+        self.cleared = 0
+        self.opt = type("Opt", (), {})()
+
+    def set_vulkan_device(self, _index):
+        pass
+
+    def load_param(self, path):
+        return 1 if "refuses" in path else 0
+
+    def load_model(self, path):
+        return 1 if "half-broken" in path else 0
+
+    def clear(self):
+        self.cleared += 1
+
+
+class TestTheEngineReleasesWhatItHolds:
+    """An engine holds ~700 MiB of VRAM; nothing freed it before (VOCR-0005)."""
+
+    def engine(self, tmp_path, stem="model"):
+        from vulkanocr.engine import OcrEngine, OcrModels
+
+        runtime = FakeRuntime([FakeInfo("Radeon", 0)])
+        runtime.Net = _FakeNet
+        for name in (f"{stem}-det", f"{stem}-rec"):
+            (tmp_path / f"{name}.param").write_text("7767517\n")
+            (tmp_path / f"{name}.bin").write_bytes(b"")
+        keys = tmp_path / "keys.txt"
+        keys.write_text("a\nb\n")
+        models = OcrModels(tmp_path / f"{stem}-det.param", tmp_path / f"{stem}-rec.param", keys)
+        return OcrEngine(models, runtime=runtime)
+
+    def test_close_clears_both_nets_and_is_safe_to_repeat(self, tmp_path):
+        engine = self.engine(tmp_path)
+        first, second = engine._det, engine._rec
+        assert first is not None and second is not None
+
+        engine.close()
+        engine.close()
+
+        assert (first.cleared, second.cleared) == (1, 1)
+        assert engine._det is None and engine._rec is None
+
+    def test_the_context_manager_closes_on_the_way_out(self, tmp_path):
+        with self.engine(tmp_path) as engine:
+            held = engine._det
+        assert held is not None and held.cleared == 1
+
+    def test_a_failed_second_load_frees_the_first_net(self, tmp_path):
+        """The detection net must not be stranded on an object nobody gets."""
+        from vulkanocr.engine import OcrEngine, OcrEngineError, OcrModels
+
+        runtime = FakeRuntime([FakeInfo("Radeon", 0)])
+        built = []
+
+        class Recording(_FakeNet):
+            def __init__(self):
+                super().__init__()
+                built.append(self)
+
+        runtime.Net = Recording
+        for name in ("good-det", "refuses-rec"):
+            (tmp_path / f"{name}.param").write_text("7767517\n")
+            (tmp_path / f"{name}.bin").write_bytes(b"")
+        keys = tmp_path / "keys.txt"
+        keys.write_text("a\n")
+        models = OcrModels(tmp_path / "good-det.param", tmp_path / "refuses-rec.param", keys)
+
+        import pytest
+
+        with pytest.raises(OcrEngineError):
+            OcrEngine(models, runtime=runtime)
+
+        assert [net.cleared >= 1 for net in built] == [True] * len(built)

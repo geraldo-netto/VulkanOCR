@@ -60,6 +60,7 @@ for model_set in ("v6-medium", "v6-tiny"):
         for _ in range(3):
             recognise_all(engine, crops)
         ms = (time.perf_counter() - start) / 3 * 1000
+        engine.close()
         print(
             f"{model_set:10} fp16={str(fp16):5} rec {ms:7.1f} ms for {len(crops)} crops "
             f"({pixels / 1e6:.2f} MPix) = {ms / len(crops):5.2f} ms/crop, "
