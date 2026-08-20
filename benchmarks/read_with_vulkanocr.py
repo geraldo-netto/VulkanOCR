@@ -32,10 +32,9 @@ def main() -> int:
         start = time.perf_counter()
         result = engine.read(rgb)
         elapsed = (time.perf_counter() - start) * 1000
-        observed = " ".join(
-            line.text
-            for line in sorted(result.lines, key=lambda line: (line.center_y, line.center_x))
-        )
+        # read() already sorts by (center_y, center_x); sorting again here
+        # implied the engine's order could not be trusted.
+        observed = " ".join(line.text for line in result.lines)
         row = {
             "id": case["id"],
             "variant": case["variant"],
