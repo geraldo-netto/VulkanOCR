@@ -14,11 +14,11 @@ reader can see exactly what is borrowed and from whom.
 
 The two model repositories are **not** vendored here: they are clones of
 somebody else's work, and republishing them under this name would misrepresent
-authorship and duplicate their history. `bench/README.md` and `mvp/README.md`
-say where to fetch them; the weights are large binaries that belong with their
+authorship and duplicate their history. [`docs/benchmarks.md`](docs/benchmarks.md) and the README's setup
+section say where to fetch them; the weights are large binaries that belong with their
 publishers, not in this history.
 
-The detection geometry in `mvp/ocr_engine/detection.py` follows nihui's
+The detection geometry in `src/vulkanocr/detection.py` follows nihui's
 `ppocrv5.cpp` with one deliberate divergence, recorded in the code: the flat
 1.95 box enlargement is replaced by DB's own unclip rule, which measurably
 recovers the accuracy the flat rule loses on small text.

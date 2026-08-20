@@ -19,9 +19,10 @@ from vulkanocr.engine import OcrEngine
 def main() -> int:
     corpus = pathlib.Path(sys.argv[1])
     model_set = sys.argv[2]
+    fp16 = "--fp16" in sys.argv[3:]
     cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
 
-    engine = OcrEngine(models_for(model_set))
+    engine = OcrEngine(models_for(model_set), use_fp16=fp16)
     rows = []
     # One warm pass first: the first read pays for shader compilation, and a
     # comparison of steady-state speed must not charge it to one engine only.
@@ -51,7 +52,11 @@ def main() -> int:
     out = corpus.parent / f"results-spike-{model_set}.json"
     out.write_text(
         json.dumps(
-            {"engine": f"vulkanocr/{model_set}", "device": engine.device_name, "rows": rows},
+            {
+                "engine": f"vulkanocr/{model_set}{'+fp16' if fp16 else ''}",
+                "device": engine.device_name,
+                "rows": rows,
+            },
             indent=2,
             ensure_ascii=False,
         ),
