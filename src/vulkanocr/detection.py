@@ -18,15 +18,13 @@ STRIDE = 32
 PAD_VALUE = 114.0
 BINARY_THRESHOLD = 0.3
 BOX_THRESHOLD = 0.6
-# The reference port replaces DB's unclip with a flat enlargement: every box
-# grows by 0.475 of its short side on all four sides, whatever its shape. DB's
-# own rule offsets a box by `area * ratio / perimeter`, which for a text line
-# is about 0.75 of its height — half as much again — so the flat rule shaves
-# ascenders, accents and the last glyph off long lines. That is where this
-# port loses to upstream on small text: `noite` read as `noíte`, `informação`
-# as `infomação`. `unclip_offset` is the DB rule, exact for the rectangles
-# `minAreaRect` produces, and needs no polygon clipper to compute.
-ENLARGE_RATIO = 1.95
+# DB's own unclip rule: a box is pushed out by `area * ratio / perimeter`,
+# which for a text line is about 0.75 of its height. The reference port used
+# a flat 1.95 enlargement instead — about half as much margin — and that
+# shaved ascenders, accents and last glyphs off small text (`noite` read as
+# `noíte`); switching to the real rule closed the accuracy gap to upstream.
+# `unclip_offset` computes it exactly for the rectangles `minAreaRect`
+# produces, no polygon clipper needed.
 UNCLIP_RATIO = 1.5
 MIN_SIZE_FACTOR = 3.0
 
