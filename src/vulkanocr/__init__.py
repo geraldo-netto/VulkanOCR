@@ -1,14 +1,18 @@
-"""Decoupled PaddleOCR-on-ncnn engine running on Vulkan.
+"""PaddleOCR's models on ncnn over Vulkan: GPU OCR without PaddlePaddle.
 
-This package is the OMNI-0351 MVP: it depends on ncnn, numpy, and OpenCV
-only — no PaddlePaddle, no PaddleOCR, no omnitensor imports — and it treats
-both upstreams as unmodified externals. Models are PP-OCRv5 graphs already
-ported to ncnn form; the dictionary is a plain text file, one class per line.
+Dependencies are ncnn, numpy and OpenCV only, and both upstreams are
+unmodified externals: the models are third-party ncnn ports of PaddleOCR's
+weights — PP-OCRv6 tiny/small/medium and PP-OCRv5 mobile, catalogued in
+:mod:`vulkanocr.catalog` — and the dictionary is a plain text file, one
+class per line.
 
 Public surface:
 
-    engine = OcrEngine(OcrModels(det_param, rec_param, dictionary))
-    result = engine.read(rgb_array)   # -> OcrResult(lines=[OcrLine, ...])
+    with OcrEngine(models_for("v6-medium")) as engine:
+        result = engine.read(rgb_array)   # -> OcrResult(lines=[OcrLine, ...])
+
+The engine also offers its halves — detect / crops / recognise / logits /
+decode — for callers that time or compose them separately.
 """
 
 from .catalog import CATALOG, DEFAULT_MODEL, models_for
