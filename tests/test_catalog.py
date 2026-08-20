@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from vulkanocr import CATALOG, DEFAULT_MODEL, models_for
+from vulkanocr import CATALOG, DEFAULT_MODEL, OcrEngineError, models_for
 
 
 def test_the_default_is_the_current_generation():
@@ -26,7 +26,7 @@ def test_every_catalogued_model_set_is_installed():
     try:
         for name in CATALOG:
             models_for(name).validated()
-    except Exception:
+    except OcrEngineError:
         pytest.skip("model ports are not fetched here; see THIRD-PARTY.md")
 
 

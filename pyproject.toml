@@ -83,6 +83,9 @@ max-complexity = 8
 # resolve — the comparison runs it from its own virtualenv, on an older
 # paddlepaddle — and that file says so at its head.
 include = ["src", "tests", "benchmarks"]
+# tests/test_scoring.py imports the benchmark scorer by extending sys.path the
+# way the runners themselves do; the module is real, just not a package.
+extraPaths = ["benchmarks"]
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "basic"

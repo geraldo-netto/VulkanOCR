@@ -7,6 +7,7 @@ and the band reads as confident nonsense — which is exactly what happened for
 """
 
 import numpy as np
+import pytest
 
 from vulkanocr.detection import TextRegion, _oriented, unclip_offset
 from vulkanocr.recognition import crop_region
@@ -105,3 +106,57 @@ def test_a_trailing_newline_is_a_file_convention_not_a_character_class(tmp_path)
     read_newline = OcrEngine._load_dictionary(newline)
 
     assert read_bare == read_newline == ("a", "b", " ")
+
+
+class TestScaledAndMapping:
+    def test_small_images_are_not_upscaled(self):
+        from vulkanocr.detection import _scaled
+
+        assert _scaled(300, 200, 640) == (300, 200, 1.0)
+
+    def test_the_long_side_lands_exactly_on_the_target(self):
+        from vulkanocr.detection import _scaled
+
+        for width, height in ((1280, 720), (720, 1280), (5000, 100)):
+            out_w, out_h, scale = _scaled(width, height, 640)
+            assert max(out_w, out_h) == 640
+            assert min(out_w, out_h) >= 1
+            assert scale == pytest.approx(640 / max(width, height))
+
+
+class TestContourScore:
+    def test_the_score_is_the_mean_probability_inside_the_contour(self):
+        import cv2
+
+        from vulkanocr.detection import _contour_score
+
+        probability = np.zeros((40, 40), np.float32)
+        probability[10:20, 10:30] = 0.8
+        contours, _ = cv2.findContours(
+            (probability > 0.3).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        assert _contour_score(probability, contours[0]) == pytest.approx(0.8, abs=0.05)
+
+
+class TestCropRegion:
+    def test_a_horizontal_region_rectifies_to_its_length_by_48(self):
+        from vulkanocr.detection import TextRegion
+
+        image = np.full((100, 400, 3), 255, np.uint8)
+        image[40:60, 50:350] = 0  # a 300x20 bar
+        region = TextRegion(
+            center_x=200.0,
+            center_y=50.0,
+            width=20.0,
+            height=300.0,
+            angle=90.0,
+            vertical=False,
+            score=0.9,
+        )
+
+        patch = crop_region(image, region)
+
+        assert patch.shape[0] == 48
+        assert 600 < patch.shape[1] < 800  # 48 * 300/20 = 720
+        assert patch[24, patch.shape[1] // 2].tolist() == [0, 0, 0]  # the bar is inside
