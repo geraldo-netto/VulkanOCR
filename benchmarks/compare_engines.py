@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import pathlib
 import statistics
 import sys
@@ -24,8 +25,16 @@ def main() -> int:
         wer = sum(r["word_distance"] for r in rows) / sum(r["word_length"] for r in rows)
         exact = sum(1 for r in rows if r["exact"]) / len(rows)
         times = sorted(r["ms"] for r in rows)
+        if not rows:
+            # An empty result document is a run that produced nothing; naming
+            # it beats dividing by zero in the middle of the table.
+            print(f"{doc['engine']:34} (no rows)")
+            continue
         p50 = statistics.median(times)
-        p95 = times[int(len(times) * 0.95) - 1]
+        # The nearest-rank definition: ceil(0.95 * n) as a 1-based rank. The
+        # previous expression was one rank low — int(55 * 0.95) - 1 indexed
+        # the 52nd of 55 (p92.7), quietly flattering every engine's tail.
+        p95 = times[math.ceil(len(times) * 0.95) - 1]
         total = sum(times) / 1000
         summaries.append((doc["engine"], doc["device"], cer, wer, exact, p50, p95, total, rows))
         print(
