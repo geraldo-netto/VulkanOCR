@@ -42,22 +42,29 @@ def timed(call, runs=3):
     return (time.perf_counter() - start) / runs * 1000, out
 
 
-image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
-rgb = load_rgb(image)
-engine = OcrEngine(models_for(model_set))
-patches = engine.crops(rgb)
-print(f"{model_set} on {engine.device_name}: {len(patches)} crops")
+def main() -> int:
+    image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
+    rgb = load_rgb(image)
+    engine = OcrEngine(models_for(model_set))
+    patches = engine.crops(rgb)
+    print(f"{model_set} on {engine.device_name}: {len(patches)} crops")
 
-base_ms, base_out = timed(lambda: sequential(engine, patches))
-print(f"  sequential          {base_ms:8.1f} ms   ({base_ms / len(patches):5.1f} ms/crop)")
+    base_ms, base_out = timed(lambda: sequential(engine, patches))
+    print(f"  sequential          {base_ms:8.1f} ms   ({base_ms / len(patches):5.1f} ms/crop)")
 
-for workers in (2, 4, 8, 16):
-    try:
-        ms, out = timed(lambda w=workers: concurrent(engine, patches, w))
-    except Exception as error:  # noqa: BLE001 - a PoC reports what it hits
-        print(f"  {workers:2} extractors      failed: {type(error).__name__}: {error}")
-        continue
-    same = [text for text, _c in out] == [text for text, _c in base_out]
-    print(
-        f"  {workers:2} extractors     {ms:8.1f} ms   {base_ms / ms:4.2f}x   text identical: {same}"
-    )
+    for workers in (2, 4, 8, 16):
+        try:
+            ms, out = timed(lambda w=workers: concurrent(engine, patches, w))
+        except Exception as error:  # noqa: BLE001 - a PoC reports what it hits
+            print(f"  {workers:2} extractors      failed: {type(error).__name__}: {error}")
+            continue
+        same = [text for text, _c in out] == [text for text, _c in base_out]
+        print(
+            f"  {workers:2} extractors     {ms:8.1f} ms   {base_ms / ms:4.2f}x   "
+            f"text identical: {same}"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -28,20 +28,26 @@ def drm_counters():
     return totals
 
 
-rgb = load_rgb(sys.argv[1])
-engine = OcrEngine(models_for("v6-medium"))
-engine.read(rgb)
-print("device:", engine.device_name)
-before = drm_counters()
-start = time.perf_counter()
-for _ in range(5):
+def main() -> int:
+    rgb = load_rgb(sys.argv[1])
+    engine = OcrEngine(models_for("v6-medium"))
     engine.read(rgb)
-wall = (time.perf_counter() - start) / 5
-after = drm_counters()
-for key in sorted(set(before) | set(after)):
-    delta = after.get(key, 0) - before.get(key, 0)
-    if key.startswith("drm-engine"):
-        print(f"  {key:24} +{delta / 1e6 / 5:9.1f} ms of GPU time per read")
-    else:
-        print(f"  {key:24}  {after.get(key, 0) / 1024:9.1f} MiB held")
-print(f"  wall per read            {wall * 1000:9.1f} ms")
+    print("device:", engine.device_name)
+    before = drm_counters()
+    start = time.perf_counter()
+    for _ in range(5):
+        engine.read(rgb)
+    wall = (time.perf_counter() - start) / 5
+    after = drm_counters()
+    for key in sorted(set(before) | set(after)):
+        delta = after.get(key, 0) - before.get(key, 0)
+        if key.startswith("drm-engine"):
+            print(f"  {key:24} +{delta / 1e6 / 5:9.1f} ms of GPU time per read")
+        else:
+            print(f"  {key:24}  {after.get(key, 0) / 1024:9.1f} MiB held")
+    print(f"  wall per read            {wall * 1000:9.1f} ms")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -16,18 +16,22 @@ from __future__ import annotations
 import unicodedata
 from pathlib import Path
 
-import cv2
-import numpy as np
 
-
-def load_rgb(path: Path | str) -> np.ndarray:
+def load_rgb(path: Path | str):
     """One image as a contiguous RGB array, or a refusal that names the file.
 
     `cv2.imread` answers `None` for anything it cannot decode — a missing
     path, a truncated PNG, a directory — and every runner here used to
     subscript that answer immediately, turning a wrong path into an opaque
     `TypeError` several frames from the cause.
+
+    cv2 and numpy are imported here rather than at module top so that the
+    Tesseract and PaddleOCR runners — which score text and never load an
+    image through us — keep working under interpreters without OpenCV.
     """
+    import cv2  # noqa: PLC0415 - optional for score-only consumers
+    import numpy as np  # noqa: PLC0415
+
     image = cv2.imread(str(path))
     if image is None:
         raise FileNotFoundError(f"cannot read an image from {path}")

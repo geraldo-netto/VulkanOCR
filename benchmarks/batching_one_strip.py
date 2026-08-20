@@ -41,28 +41,34 @@ def single_texts(engine, crops):
     return [engine.decode(logits_for(engine, crop))[0] for crop in crops]
 
 
-image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
-rgb = load_rgb(image)
-engine = OcrEngine(models_for(model_set))
-crops = [patch for _region, patch in engine.crops(rgb)]
-widths = [crop.shape[1] for crop in crops]
-print(f"{model_set}: {len(crops)} crops, widths {min(widths)}..{max(widths)}")
+def main() -> int:
+    image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
+    rgb = load_rgb(image)
+    engine = OcrEngine(models_for(model_set))
+    crops = [patch for _region, patch in engine.crops(rgb)]
+    widths = [crop.shape[1] for crop in crops]
+    print(f"{model_set}: {len(crops)} crops, widths {min(widths)}..{max(widths)}")
 
-single_texts(engine, crops[:2])
-start = time.perf_counter()
-for _ in range(3):
-    base = single_texts(engine, crops)
-base_ms = (time.perf_counter() - start) / 3 * 1000
-print(f"  one call per crop     {base_ms:8.1f} ms")
-
-for group in (2, 4, 8, 16, len(crops)):
-    batched_texts(engine, crops[: min(group, len(crops))], group)
+    single_texts(engine, crops[:2])
     start = time.perf_counter()
     for _ in range(3):
-        got = batched_texts(engine, crops, group)
-    ms = (time.perf_counter() - start) / 3 * 1000
-    same = sum(1 for a, b in zip(base, got, strict=True) if a == b)
-    print(
-        f"  {group:3} crops per call   {ms:8.1f} ms   {base_ms / ms:4.2f}x   "
-        f"identical {same}/{len(base)}"
-    )
+        base = single_texts(engine, crops)
+    base_ms = (time.perf_counter() - start) / 3 * 1000
+    print(f"  one call per crop     {base_ms:8.1f} ms")
+
+    for group in (2, 4, 8, 16, len(crops)):
+        batched_texts(engine, crops[: min(group, len(crops))], group)
+        start = time.perf_counter()
+        for _ in range(3):
+            got = batched_texts(engine, crops, group)
+        ms = (time.perf_counter() - start) / 3 * 1000
+        same = sum(1 for a, b in zip(base, got, strict=True) if a == b)
+        print(
+            f"  {group:3} crops per call   {ms:8.1f} ms   {base_ms / ms:4.2f}x   "
+            f"identical {same}/{len(base)}"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

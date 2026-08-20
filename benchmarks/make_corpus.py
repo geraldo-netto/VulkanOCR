@@ -18,7 +18,6 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 OUT = pathlib.Path(sys.argv[1])
-OUT.mkdir(parents=True, exist_ok=True)
 
 FONTS = {
     "sans": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -73,7 +72,11 @@ def skew(array, degrees):
     height, width = array.shape[:2]
     matrix = cv2.getRotationMatrix2D((width / 2, height / 2), degrees, 1.0)
     return cv2.warpAffine(
-        array, matrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255)
+        array,
+        matrix,
+        (width, height),
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(255, 255, 255),
     )
 
 
@@ -101,26 +104,34 @@ def faded(array, factor):
     return np.clip(255 - (255 - array.astype(np.float32)) * factor, 0, 255).astype(np.uint8)
 
 
-cases = []
-for index, lines in enumerate(PARAGRAPHS):
-    base = render(lines, FONTS["sans"], 28)
-    variants = {
-        "clean-28px-sans": base,
-        "clean-16px-sans": render(lines, FONTS["sans"], 16),
-        "clean-12px-sans": render(lines, FONTS["sans"], 12, width=700),
-        "clean-28px-serif": render(lines, FONTS["serif"], 28),
-        "clean-28px-mono": render(lines, FONTS["mono"], 28),
-        "skew-5deg": skew(base, 5),
-        "skew-12deg": skew(base, 12),
-        "blur-5px": blur(base, 5),
-        "noise-sigma25": noisy(base, 25),
-        "jpeg-q30": jpeg(base, 30),
-        "faded-40pc": faded(base, 0.4),
-    }
-    for name, array in variants.items():
-        stem = f"case{index:02d}-{name}"
-        cv2.imwrite(str(OUT / f"{stem}.png"), array[:, :, ::-1])
-        cases.append({"id": stem, "image": f"{stem}.png", "lines": lines, "variant": name})
+def main() -> int:
+    OUT.mkdir(parents=True, exist_ok=True)
 
-(OUT / "ground-truth.json").write_text(json.dumps(cases, indent=2, ensure_ascii=False))
-print(f"{len(cases)} images, {len(PARAGRAPHS)} texts x 11 variants -> {OUT}")
+    cases = []
+    for index, lines in enumerate(PARAGRAPHS):
+        base = render(lines, FONTS["sans"], 28)
+        variants = {
+            "clean-28px-sans": base,
+            "clean-16px-sans": render(lines, FONTS["sans"], 16),
+            "clean-12px-sans": render(lines, FONTS["sans"], 12, width=700),
+            "clean-28px-serif": render(lines, FONTS["serif"], 28),
+            "clean-28px-mono": render(lines, FONTS["mono"], 28),
+            "skew-5deg": skew(base, 5),
+            "skew-12deg": skew(base, 12),
+            "blur-5px": blur(base, 5),
+            "noise-sigma25": noisy(base, 25),
+            "jpeg-q30": jpeg(base, 30),
+            "faded-40pc": faded(base, 0.4),
+        }
+        for name, array in variants.items():
+            stem = f"case{index:02d}-{name}"
+            cv2.imwrite(str(OUT / f"{stem}.png"), array[:, :, ::-1])
+            cases.append({"id": stem, "image": f"{stem}.png", "lines": lines, "variant": name})
+
+    (OUT / "ground-truth.json").write_text(json.dumps(cases, indent=2, ensure_ascii=False))
+    print(f"{len(cases)} images, {len(PARAGRAPHS)} texts x 11 variants -> {OUT}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
