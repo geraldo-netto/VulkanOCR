@@ -151,6 +151,16 @@ def unclip_offset(short: float, long: float, ratio: float = UNCLIP_RATIO) -> flo
 
 
 def _oriented(rw: float, rh: float, angle: float) -> tuple[float, float, float, bool]:
+    """Normalise a ``minAreaRect`` so the first side is the text's thickness.
+
+    The reference implementation normalised from the raw angle alone, and its
+    thresholds leave a gap: with OpenCV's ``[-90, 0)`` angle convention a line
+    skewed 30°–60° keeps the *long* side first, so ``crop_region`` computed a
+    48-high strip a few pixels wide and the band read as confident nonsense —
+    45° returned ``['1']``. The invariant callers rely on is enforced
+    unconditionally at the end instead: whatever the branches decided, the
+    short side comes first.
+    """
     vertical = False
     if -30 <= angle <= 30 and rh > rw * 2.7:
         vertical = True
@@ -162,6 +172,9 @@ def _oriented(rw: float, rh: float, angle: float) -> tuple[float, float, float, 
         angle += 90
         rw, rh = rh, rw
     if vertical and angle >= 60:
+        angle -= 90
+        rw, rh = rh, rw
+    if not vertical and rw > rh:
         angle -= 90
         rw, rh = rh, rw
     return rw, rh, angle, vertical

@@ -83,3 +83,19 @@ def test_invalid_image_is_a_stable_refusal(engine):
     with pytest.raises(OcrEngineError) as caught:
         engine.read(np.zeros((4, 4), dtype=np.uint8))
     assert caught.value.code == "image-invalid"
+
+
+def test_the_30_to_60_degree_band_reads_text_instead_of_noise(engine):
+    """45° used to return `['1']`: the sides stayed swapped and the crop was
+    a 19-px sliver (VOCR-0001). The model still loses edge glyphs at strong
+    skew — upstream does too — so the bar is the digits, not perfection."""
+    for degrees in (35, 45):
+        page = np.full((300, 900, 3), 255, np.uint8)
+        cv2.putText(page, "Vulkan 1234", (60, 160), cv2.FONT_HERSHEY_SIMPLEX, 1.6, (0, 0, 0), 3)
+        matrix = cv2.getRotationMatrix2D((450, 150), degrees, 1.0)
+        turned = cv2.warpAffine(page, matrix, (900, 300), borderValue=(255, 255, 255))
+        rgb = np.ascontiguousarray(turned[:, :, ::-1])
+
+        text = " ".join(line.text for line in engine.read(rgb).lines)
+
+        assert "1234" in text, (degrees, text)
