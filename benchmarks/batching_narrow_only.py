@@ -18,23 +18,22 @@ import numpy as np
 from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
-from vulkanocr.detection import detect_regions
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import crop_region, decode_ctc, patch_logits
+from vulkanocr.recognition import crop_region
 
 GAP = 32
 
 
 def logits_for(engine, strip):
     """The engine's own preprocessing and extraction, on one packed strip."""
-    return patch_logits(engine._runtime, engine._rec, strip, engine._models.blobs)
+    return engine.logits(strip)
 
 
-def read_one(engine, crop, offset):
-    return decode_ctc(logits_for(engine, crop), engine._characters, offset)[0]
+def read_one(engine, crop):
+    return engine.decode(logits_for(engine, crop))[0]
 
 
-def read_packed(engine, crops, offset):
+def read_packed(engine, crops):
     width = sum(c.shape[1] for c in crops) + GAP * (len(crops) - 1)
     strip = np.full((48, width, 3), 255, dtype=np.uint8)
     spans, x = [], 0
@@ -48,19 +47,16 @@ def read_packed(engine, crops, offset):
     for left, right in spans:
         lo = int(round(left * scale))
         hi = max(int(round(right * scale)), lo + 1)
-        out.append(decode_ctc(logits[lo:hi], engine._characters, offset)[0])
+        out.append(engine.decode(logits[lo:hi])[0])
     return out
 
 
 image = sys.argv[1]
 rgb = load_rgb(image)
 engine = OcrEngine(models_for("v6-medium"))
-offset = engine._models.ctc_offset
-regions = detect_regions(
-    engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs
-)
+regions = engine.detect(rgb)
 crops = [c for c in (crop_region(rgb, r) for r in regions) if c.size]
-base = [read_one(engine, c, offset) for c in crops]
+base = [read_one(engine, c) for c in crops]
 
 for threshold in (0, 96, 160, 256, 10_000):
     narrow = [i for i, c in enumerate(crops) if c.shape[1] <= threshold]
@@ -69,10 +65,10 @@ for threshold in (0, 96, 160, 256, 10_000):
     def run(narrow=narrow, wide=wide):
         got = dict.fromkeys(range(len(crops)))
         for index in wide:
-            got[index] = read_one(engine, crops[index], offset)
+            got[index] = read_one(engine, crops[index])
         if narrow:
             for text, index in zip(
-                read_packed(engine, [crops[i] for i in narrow], offset), narrow, strict=True
+                read_packed(engine, [crops[i] for i in narrow]), narrow, strict=True
             ):
                 got[index] = text
         return [got[i] for i in range(len(crops))]

@@ -15,7 +15,7 @@ import numpy as np
 
 from .detection import detect_regions
 from .device import select_hardware_device
-from .recognition import crop_region, recognise_patch
+from .recognition import crop_region, decode_ctc, patch_logits, recognise_patch
 
 DEFAULT_TARGET_SIZE = 640
 MAX_IMAGE_PIXELS = 64_000_000
@@ -125,8 +125,47 @@ class OcrEngine:
     def device_name(self) -> str:
         return self._device.name
 
-    def read(self, rgb: np.ndarray) -> OcrResult:
-        """Recognise every text line in an RGB uint8 array."""
+    def detect(self, rgb: np.ndarray) -> list:
+        """The text regions on one validated RGB image, unrecognised.
+
+        Public because the benchmarks are consumers too: they time the two
+        halves apart, and while this seam was private they reached for
+        ``engine._det`` and ``engine._runtime`` sixty-five times — code no
+        checker could protect from a rename.
+        """
+        self._validated(rgb)
+        return detect_regions(self._runtime, self._det, rgb, self._target_size, self._models.blobs)
+
+    def crops(self, rgb: np.ndarray) -> list[tuple]:
+        """Every detected region with its rectified 48-high patch, empties dropped."""
+        pairs = []
+        for region in self.detect(rgb):
+            patch = crop_region(rgb, region)
+            if patch.size:
+                pairs.append((region, patch))
+        return pairs
+
+    def recognise(self, patch: np.ndarray) -> tuple[str, float]:
+        """One rectified patch through the recognition net and the CTC decode."""
+        return recognise_patch(
+            self._runtime,
+            self._rec,
+            patch,
+            self._characters,
+            self._models.blobs,
+            self._models.ctc_offset,
+        )
+
+    def logits(self, patch: np.ndarray) -> np.ndarray:
+        """One patch's raw CTC logits, for callers that decode segments themselves."""
+        return patch_logits(self._runtime, self._rec, patch, self._models.blobs)
+
+    def decode(self, logits: np.ndarray) -> tuple[str, float]:
+        """Greedy-decode a logits slice with this engine's dictionary and offset."""
+        return decode_ctc(logits, self._characters, self._models.ctc_offset)
+
+    @staticmethod
+    def _validated(rgb: np.ndarray) -> None:
         if not isinstance(rgb, np.ndarray) or rgb.ndim != 3 or rgb.shape[2] != 3:
             raise OcrEngineError("image-invalid", "expected an RGB HxWx3 array")
         if rgb.dtype != np.uint8:
@@ -134,22 +173,11 @@ class OcrEngine:
         if rgb.shape[0] * rgb.shape[1] > MAX_IMAGE_PIXELS:
             raise OcrEngineError("image-too-large", "image exceeds the pixel bound")
 
-        regions = detect_regions(
-            self._runtime, self._det, rgb, self._target_size, self._models.blobs
-        )
+    def read(self, rgb: np.ndarray) -> OcrResult:
+        """Recognise every text line in an RGB uint8 array."""
         lines = []
-        for region in regions:
-            patch = crop_region(rgb, region)
-            if patch.size == 0:
-                continue
-            text, confidence = recognise_patch(
-                self._runtime,
-                self._rec,
-                patch,
-                self._characters,
-                self._models.blobs,
-                self._models.ctc_offset,
-            )
+        for region, patch in self.crops(rgb):
+            text, confidence = self.recognise(patch)
             if not text:
                 continue
             lines.append(

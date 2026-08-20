@@ -22,40 +22,20 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
-from vulkanocr.detection import detect_regions
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import crop_region, recognise_patch
 
 
 def crops_of(engine, rgb):
-    regions = detect_regions(
-        engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs
-    )
-    return [(region, crop_region(rgb, region)) for region in regions]
+    return engine.crops(rgb)
 
 
 def sequential(engine, patches):
-    offset = engine._models.ctc_offset
-    return [
-        recognise_patch(
-            engine._runtime, engine._rec, patch, engine._characters, engine._models.blobs, offset
-        )
-        for _region, patch in patches
-        if patch.size
-    ]
+    return [engine.recognise(patch) for _region, patch in patches]
 
 
 def concurrent(engine, patches, workers):
-    offset = engine._models.ctc_offset
-
-    def one(item):
-        _region, patch = item
-        return recognise_patch(
-            engine._runtime, engine._rec, patch, engine._characters, engine._models.blobs, offset
-        )
-
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        return list(pool.map(one, [item for item in patches if item[1].size]))
+        return list(pool.map(lambda pair: engine.recognise(pair[1]), patches))
 
 
 def timed(call, runs=3):

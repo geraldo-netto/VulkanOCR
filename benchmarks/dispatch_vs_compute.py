@@ -17,9 +17,8 @@ import numpy as np
 from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
-from vulkanocr.detection import detect_regions
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import crop_region, recognise_patch
+from vulkanocr.recognition import crop_region
 
 image = sys.argv[1]
 rgb = load_rgb(image)
@@ -43,20 +42,12 @@ def build(model_set, fp16):
 
 
 def crops_of(engine):
-    regions = detect_regions(
-        engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs
-    )
+    regions = engine.detect(rgb)
     return [c for c in (crop_region(rgb, r) for r in regions) if c.size]
 
 
 def recognise_all(engine, crops):
-    offset = engine._models.ctc_offset
-    return [
-        recognise_patch(
-            engine._runtime, engine._rec, c, engine._characters, engine._models.blobs, offset
-        )
-        for c in crops
-    ]
+    return [engine.recognise(c) for c in crops]
 
 
 for model_set in ("v6-medium", "v6-tiny"):
@@ -79,25 +70,16 @@ for model_set in ("v6-medium", "v6-tiny"):
 engine = build("v6-medium", False)
 crops = crops_of(engine)
 narrow = min(crops, key=lambda c: c.shape[1])
-offset = engine._models.ctc_offset
-recognise_patch(
-    engine._runtime, engine._rec, narrow, engine._characters, engine._models.blobs, offset
-)
+engine.recognise(narrow)
 start = time.perf_counter()
 for _ in range(20):
-    recognise_patch(
-        engine._runtime, engine._rec, narrow, engine._characters, engine._models.blobs, offset
-    )
+    engine.recognise(narrow)
 per_call = (time.perf_counter() - start) / 20 * 1000
 wide = np.tile(narrow, (1, 20, 1))
-recognise_patch(
-    engine._runtime, engine._rec, wide, engine._characters, engine._models.blobs, offset
-)
+engine.recognise(wide)
 start = time.perf_counter()
 for _ in range(3):
-    recognise_patch(
-        engine._runtime, engine._rec, wide, engine._characters, engine._models.blobs, offset
-    )
+    engine.recognise(wide)
 wide_ms = (time.perf_counter() - start) / 3 * 1000
 print(f"\nsmallest crop ({narrow.shape[1]}px wide): {per_call:.1f} ms each")
 print(

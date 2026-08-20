@@ -21,23 +21,20 @@ import numpy as np
 from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
-from vulkanocr.detection import detect_regions
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import crop_region, decode_ctc, patch_logits
+from vulkanocr.recognition import crop_region
 
 GAP = 32  # white columns between crops
 
 
 def crops_of(engine, rgb):
-    regions = detect_regions(
-        engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs
-    )
+    regions = engine.detect(rgb)
     return [crop for crop in (crop_region(rgb, region) for region in regions) if crop.size]
 
 
 def logits_for(engine, strip):
     """The engine's own preprocessing and extraction, on one packed strip."""
-    return patch_logits(engine._runtime, engine._rec, strip, engine._models.blobs)
+    return engine.logits(strip)
 
 
 def pack(crops):
@@ -52,7 +49,6 @@ def pack(crops):
 
 
 def batched_texts(engine, crops, group):
-    offset = engine._models.ctc_offset
     texts = []
     for start in range(0, len(crops), group):
         chunk = crops[start : start + group]
@@ -65,13 +61,12 @@ def batched_texts(engine, crops, group):
                 int(round(left * scale)),
                 max(int(round(right * scale)), int(round(left * scale)) + 1),
             )
-            texts.append(decode_ctc(logits[lo:hi], engine._characters, offset)[0])
+            texts.append(engine.decode(logits[lo:hi])[0])
     return texts
 
 
 def single_texts(engine, crops):
-    offset = engine._models.ctc_offset
-    return [decode_ctc(logits_for(engine, crop), engine._characters, offset)[0] for crop in crops]
+    return [engine.decode(logits_for(engine, crop))[0] for crop in crops]
 
 
 image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")

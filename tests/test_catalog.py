@@ -44,3 +44,12 @@ def test_the_ctc_offset_is_a_fact_of_the_port_not_of_the_caller():
 
     assert with_blank.ctc_offset == 0
     assert without.ctc_offset == 1
+
+
+def test_the_engine_offers_its_halves_to_consumers_that_time_them_apart():
+    """The benchmarks reached into `engine._det` and friends 65 times before
+    these existed; a private rename silently broke four scripts."""
+    from vulkanocr.engine import OcrEngine
+
+    for name in ("detect", "crops", "recognise", "logits", "decode"):
+        assert callable(getattr(OcrEngine, name)), name
