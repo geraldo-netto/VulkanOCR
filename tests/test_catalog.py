@@ -1,6 +1,6 @@
 """The catalogue: default model set and per-port facts."""
 
-from ocr_engine import CATALOG, DEFAULT_MODEL, models_for
+from vulkanocr import CATALOG, DEFAULT_MODEL, models_for
 
 
 def test_the_default_is_the_current_generation():

@@ -1,9 +1,18 @@
 """Per-process GPU proof: amdgpu fdinfo counters for this PID only."""
-import os, pathlib, re, sys, time
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
-import cv2, numpy as np
-from ocr_engine.catalog import models_for
-from ocr_engine.engine import OcrEngine
+
+import os
+import pathlib
+import re
+import sys
+import time
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
+import cv2
+import numpy as np
+
+from vulkanocr.catalog import models_for
+from vulkanocr.engine import OcrEngine
+
 
 def drm_counters():
     """Nanoseconds of GPU engine time and VRAM this process holds."""
@@ -19,6 +28,7 @@ def drm_counters():
             totals[key] = totals.get(key, 0) + int(value)
     return totals
 
+
 rgb = np.ascontiguousarray(cv2.imread(sys.argv[1])[:, :, ::-1])
 engine = OcrEngine(models_for("v6-medium"))
 engine.read(rgb)
@@ -32,7 +42,7 @@ after = drm_counters()
 for key in sorted(set(before) | set(after)):
     delta = after.get(key, 0) - before.get(key, 0)
     if key.startswith("drm-engine"):
-        print(f"  {key:24} +{delta/1e6/5:9.1f} ms of GPU time per read")
+        print(f"  {key:24} +{delta / 1e6 / 5:9.1f} ms of GPU time per read")
     else:
-        print(f"  {key:24}  {after.get(key,0)/1024:9.1f} MiB held")
-print(f"  wall per read            {wall*1000:9.1f} ms")
+        print(f"  {key:24}  {after.get(key, 0) / 1024:9.1f} MiB held")
+print(f"  wall per read            {wall * 1000:9.1f} ms")

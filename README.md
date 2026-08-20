@@ -18,19 +18,24 @@ same PP-OCRv6 graphs on the GPU through ncnn, at the same accuracy:
 
 55 rendered pages with exact ground truth, five texts across eleven
 degradations — sizes, fonts, skew, blur, noise, JPEG and a faded scan. The
-corpus generator, the scorer and every runner are in [`bench/`](bench), so the
-numbers can be reproduced rather than believed. `bench/README.md` records how
+corpus generator, the scorer and every runner are in [`benchmarks/`](benchmarks), so the
+numbers can be reproduced rather than believed. [`docs/benchmarks.md`](docs/benchmarks.md) records how
 they were taken and what the corpus does not cover.
 
 ## What it is
 
 ```
-mvp/ocr_engine/
-  device.py       hardware-only Vulkan selection; software rasterisers are refused
-  detection.py    DB preprocess -> probability map -> oriented boxes -> unclip
-  recognition.py  affine crop -> CTC head -> greedy decode
-  engine.py       facade: load once, read(rgb) -> OcrResult
-  catalog.py      model sets as data: PP-OCRv6 tiny/small/medium, PP-OCRv5 mobile
+src/vulkanocr/      the engine, installed as the `vulkanocr` package
+  device.py         hardware-only Vulkan selection; software rasterisers are refused
+  detection.py      DB preprocess -> probability map -> oriented boxes -> unclip
+  recognition.py    affine crop -> CTC head -> greedy decode
+  engine.py         facade: load once, read(rgb) -> OcrResult
+  catalog.py        model sets as data: PP-OCRv6 tiny/small/medium, PP-OCRv5 mobile
+  cli.py            the `vulkanocr` command
+tests/              21 tests; the live ones skip without a GPU
+benchmarks/         corpus, scorer, one runner per engine, the batching PoCs
+docs/               benchmarks, engine notes, and the findings of the first pass
+samples/            the images the README and tests quote
 ```
 
 585 lines of engine, 231 of tests. Dependencies are `ncnn`, `numpy` and
@@ -45,29 +50,30 @@ once (see [THIRD-PARTY.md](THIRD-PARTY.md)):
 git clone https://github.com/Avafly/PaddleOCR-ncnn-CPP   # PP-OCRv6, MIT
 git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, BSD-3
 
-python3 -m venv .venv && .venv/bin/pip install ncnn numpy opencv-python-headless pillow
-cd mvp
-../.venv/bin/python demo.py ../sample-applet.png                 # PP-OCRv6 medium
-../.venv/bin/python demo.py ../sample-applet.png --models v6-tiny
-../.venv/bin/python -m pytest tests -q                           # 21 tests
+python3 -m venv .venv
+.venv/bin/pip install -e '.[dev]'
+
+.venv/bin/vulkanocr samples/sample-applet.png                # PP-OCRv6 medium
+.venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
+.venv/bin/python -m pytest -q                                # 21 tests
 ```
 
-`demo.py` prints the device it chose, the lines with their coordinates and
+The command prints the device it chose, the lines with their coordinates and
 confidence, and the GPU's `gpu_busy_percent` while it works — so "it ran on
 the GPU" is observable rather than asserted. For the same claim measured per
-process, `bench/gpu_fdinfo.py` reads this process's own amdgpu counters.
+process, `benchmarks/gpu_proof.py` reads this process's own amdgpu counters.
 
 ## Accuracy notes
 
 The port originally followed nihui's reference exactly, including its flat
 1.95× box enlargement in place of DB's unclip. That costs real accuracy on
 small text — accents and last glyphs shaved off the crop — and
-`detection.py` now applies DB's own rule, `area × ratio / perimeter`, which
+`src/vulkanocr/detection.py` now applies DB's own rule, `area × ratio / perimeter`, which
 for a `minAreaRect` is one expression and needs no clipper. It closed the gap
 to upstream (CER 0.0223 → 0.0156) and made reading *faster*, because a taller
 box yields a narrower 48-px crop.
 
-Known gaps, all recorded in [FINDINGS.md](FINDINGS.md): 90°-rotated text is
+Known gaps, all recorded in [docs/findings.md](docs/findings.md): 90°-rotated text is
 unreadable (no orientation classifier), glyph-font icons decode as CJK noise
 below ~0.6 confidence, and Hebrew has no pretrained model anywhere in the
 Paddle ecosystem.

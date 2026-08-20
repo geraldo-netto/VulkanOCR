@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ocr_engine.recognition import decode_ctc
+from vulkanocr.recognition import decode_ctc
 
 # classes: 0 blank, 1 -> "a", 2 -> "b", 3 -> "c"
 CHARS = ("a", "b", "c")

@@ -12,28 +12,35 @@ device, with the decoded text compared line for line.
 
 from __future__ import annotations
 
-import pathlib, sys, time
+import pathlib
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 import cv2
 import numpy as np
-from ocr_engine.catalog import models_for
-from ocr_engine.detection import detect_regions
-from ocr_engine.engine import OcrEngine
-from ocr_engine.recognition import crop_region, recognise_patch
+
+from vulkanocr.catalog import models_for
+from vulkanocr.detection import detect_regions
+from vulkanocr.engine import OcrEngine
+from vulkanocr.recognition import crop_region, recognise_patch
 
 
 def crops_of(engine, rgb):
-    regions = detect_regions(engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs)
+    regions = detect_regions(
+        engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs
+    )
     return [(region, crop_region(rgb, region)) for region in regions]
 
 
 def sequential(engine, patches):
     offset = 0 if engine._models.dictionary_includes_blank else 1
     return [
-        recognise_patch(engine._runtime, engine._rec, patch, engine._characters, engine._models.blobs, offset)
+        recognise_patch(
+            engine._runtime, engine._rec, patch, engine._characters, engine._models.blobs, offset
+        )
         for _region, patch in patches
         if patch.size
     ]
@@ -44,7 +51,9 @@ def concurrent(engine, patches, workers):
 
     def one(item):
         _region, patch = item
-        return recognise_patch(engine._runtime, engine._rec, patch, engine._characters, engine._models.blobs, offset)
+        return recognise_patch(
+            engine._runtime, engine._rec, patch, engine._characters, engine._models.blobs, offset
+        )
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         return list(pool.map(one, [item for item in patches if item[1].size]))
@@ -65,7 +74,7 @@ patches = crops_of(engine, rgb)
 print(f"{model_set} on {engine.device_name}: {len(patches)} crops")
 
 base_ms, base_out = timed(lambda: sequential(engine, patches))
-print(f"  sequential          {base_ms:8.1f} ms   ({base_ms/len(patches):5.1f} ms/crop)")
+print(f"  sequential          {base_ms:8.1f} ms   ({base_ms / len(patches):5.1f} ms/crop)")
 
 for workers in (2, 4, 8, 16):
     try:
@@ -74,4 +83,6 @@ for workers in (2, 4, 8, 16):
         print(f"  {workers:2} extractors      failed: {type(error).__name__}: {error}")
         continue
     same = [text for text, _c in out] == [text for text, _c in base_out]
-    print(f"  {workers:2} extractors     {ms:8.1f} ms   {base_ms/ms:4.2f}x   text identical: {same}")
+    print(
+        f"  {workers:2} extractors     {ms:8.1f} ms   {base_ms / ms:4.2f}x   text identical: {same}"
+    )

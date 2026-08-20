@@ -12,13 +12,13 @@ Public surface:
 """
 
 from .catalog import CATALOG, DEFAULT_MODEL, models_for
-from .device import HardwareVulkanUnavailable, select_hardware_device
+from .device import HardwareVulkanUnavailableError, select_hardware_device
 from .engine import OcrEngine, OcrEngineError, OcrLine, OcrModels, OcrResult
 
 __all__ = [
     "CATALOG",
     "DEFAULT_MODEL",
-    "HardwareVulkanUnavailable",
+    "HardwareVulkanUnavailableError",
     "OcrEngine",
     "OcrEngineError",
     "OcrLine",

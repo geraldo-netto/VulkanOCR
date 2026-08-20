@@ -14,7 +14,7 @@ from dataclasses import dataclass
 _PREFERENCE = {0: 0, 1: 1, 2: 2}
 
 
-class HardwareVulkanUnavailable(RuntimeError):
+class HardwareVulkanUnavailableError(RuntimeError):
     """No hardware Vulkan device is present; the engine refuses to run."""
 
 
@@ -40,7 +40,7 @@ def select_hardware_device(runtime) -> VulkanDevice:
             continue
         candidates.append((rank, index, VulkanDevice(index, info.device_name(), kind)))
     if not candidates:
-        raise HardwareVulkanUnavailable(
+        raise HardwareVulkanUnavailableError(
             "no hardware Vulkan device is present; refusing the software rasteriser"
         )
     candidates.sort(key=lambda item: (item[0], item[1]))

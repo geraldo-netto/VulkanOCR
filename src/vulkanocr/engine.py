@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -44,7 +45,7 @@ class OcrModels:
     blobs: tuple = ("in0", "out0")
     dictionary_includes_blank: bool = False
 
-    def validated(self) -> "OcrModels":
+    def validated(self) -> OcrModels:
         for path in (
             self.det_param,
             self.det_param.with_suffix(".bin"),
@@ -81,13 +82,26 @@ class OcrResult:
 class OcrEngine:
     """Detection + recognition on one hardware Vulkan device, loaded once."""
 
-    def __init__(self, models: OcrModels, *, runtime=None, target_size: int = DEFAULT_TARGET_SIZE):
+    def __init__(
+        self,
+        models: OcrModels,
+        *,
+        runtime: Any = None,
+        target_size: int = DEFAULT_TARGET_SIZE,
+    ):
+        """`runtime` is the ncnn module, or anything shaped like it.
+
+        Typed as `Any` on purpose: it is a seam, not a dependency. The tests
+        pass a fake with the three attributes this class touches, and the ncnn
+        wheel ships no stubs, so a narrower annotation would describe the
+        installed package rather than what this class requires.
+        """
         if runtime is None:
             try:
                 import ncnn as runtime  # type: ignore[no-redef]  # noqa: PLC0415
             except ImportError as error:  # pragma: no cover - environment boundary
                 raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
-        self._runtime = runtime
+        self._runtime: Any = runtime
         self._models = models.validated()
         self._target_size = int(target_size)
         self._device = select_hardware_device(runtime)

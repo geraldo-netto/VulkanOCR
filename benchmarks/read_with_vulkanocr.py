@@ -1,15 +1,21 @@
 """Read the corpus with the ncnn/Vulkan spike engine and score it."""
+
 from __future__ import annotations
 
-import json, pathlib, sys, time
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
+import json
+import pathlib
+import sys
+import time
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 import cv2
 import numpy as np
-from metrics import score
-from ocr_engine.catalog import models_for
-from ocr_engine.engine import OcrEngine
+from scoring import score
+
+from vulkanocr.catalog import models_for
+from vulkanocr.engine import OcrEngine
 
 corpus = pathlib.Path(sys.argv[1])
 model_set = sys.argv[2]
@@ -27,12 +33,27 @@ for case in cases:
     start = time.perf_counter()
     result = engine.read(rgb)
     elapsed = (time.perf_counter() - start) * 1000
-    observed = " ".join(line.text for line in sorted(result.lines, key=lambda l: (l.center_y, l.center_x)))
-    row = {"id": case["id"], "variant": case["variant"], "ms": elapsed,
-           "observed": observed, **score(" ".join(case["lines"]), observed)}
+    observed = " ".join(
+        line.text for line in sorted(result.lines, key=lambda line: (line.center_y, line.center_x))
+    )
+    row = {
+        "id": case["id"],
+        "variant": case["variant"],
+        "ms": elapsed,
+        "observed": observed,
+        **score(" ".join(case["lines"]), observed),
+    }
     rows.append(row)
-    print(f"{case['id']:34} cer={row['cer']:.3f} wer={row['wer']:.3f} {elapsed:7.1f} ms", flush=True)
+    print(
+        f"{case['id']:34} cer={row['cer']:.3f} wer={row['wer']:.3f} {elapsed:7.1f} ms", flush=True
+    )
 
 out = corpus.parent / f"results-spike-{model_set}.json"
-out.write_text(json.dumps({"engine": f"vulkanocr/{model_set}", "device": engine.device_name, "rows": rows}, indent=2, ensure_ascii=False))
+out.write_text(
+    json.dumps(
+        {"engine": f"vulkanocr/{model_set}", "device": engine.device_name, "rows": rows},
+        indent=2,
+        ensure_ascii=False,
+    )
+)
 print("device:", engine.device_name)

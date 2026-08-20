@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vulkanocr"
+version = "0.1.0"
+description = "PaddleOCR models on ncnn over Vulkan: GPU OCR on cards PaddlePaddle cannot use."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Geraldo Netto", email = "geraldonetto@gmail.com"}]
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
+# opencv is named explicitly rather than relied on as an ncnn transitive: the
+# detection and crop paths import it directly, so a future ncnn wheel that
+# dropped it would fail at read time instead of at resolve time.
+dependencies = [
+    "ncnn>=1.0.20240102",
+    "numpy>=1.24",
+    "opencv-python-headless>=4.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+# What the benchmark suite needs beyond the engine itself. PaddleOCR is pinned
+# below 3.3: paddlepaddle 3.3.1's PIR-to-oneDNN converter cannot handle a
+# double-array attribute on conv2d, so every PP-OCR graph refuses to run with
+# oneDNN enabled and the CPU comparison becomes eight times slower than the
+# hardware can do. See docs/benchmarks.md.
+bench = ["pillow>=10.0", "paddleocr>=3.7,<4", "paddlepaddle>=3.2,<3.3"]
+
+[project.scripts]
+vulkanocr = "vulkanocr.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/geraldo-netto/VulkanOCR"
+Issues = "https://github.com/geraldo-netto/VulkanOCR/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vulkanocr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/vulkanocr"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C90", "BLE001", "PLC0415"]
+
+[tool.ruff.lint.per-file-ignores]
+# A test that imports inside the case it is about keeps the case readable and
+# can monkeypatch before the import happens; PLC0415 is about the production
+# import graph, which is where it is enforced.
+# The live-GPU module skips itself when ncnn or a device is absent, which it
+# can only do by importing after `pytest.importorskip`.
+"tests/**" = ["PLC0415", "E402"]
+# The benchmark scripts are standalone: each one runs from a checkout without
+# installing anything, so they extend sys.path and import after it.
+"benchmarks/**" = ["PLC0415", "E402"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.pyright]
+# The engine and its tests are checked against the environment that runs them,
+# so `cv2` and `ncnn` resolve to the wheels actually installed rather than to
+# nothing. The benchmark scripts are excluded: they import PaddleOCR and
+# Tesseract's bindings, which are deliberately not dependencies of this
+# package, and a type checker complaining that an optional comparison target
+# is absent says nothing useful.
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "basic"

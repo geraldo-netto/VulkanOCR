@@ -16,6 +16,7 @@ weights; neither upstream is modified.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,6 +25,9 @@ from .engine import OcrModels
 # PP-OCRv6 medium is the default: it is the current PaddleOCR generation and,
 # measured on this host's RX 6600 XT against the same page, it was the only
 # tier that produced no low-confidence noise lines.
+# The nihui port ships no dictionary, so the class list extracted from its
+# header lives with this package rather than with the downloaded models.
+_PACKAGED_KEYS = "ppocrv5_keys.txt"
 DEFAULT_MODEL = "v6-medium"
 
 _NIHUI = "nihui-port/app/src/main/assets"
@@ -70,7 +74,7 @@ CATALOG: dict[str, ModelSpec] = {
     "v5-mobile": ModelSpec(
         f"{_NIHUI}/PP_OCRv5_mobile_det.ncnn.param",
         f"{_NIHUI}/PP_OCRv5_mobile_rec.ncnn.param",
-        "ppocrv5_keys.txt",
+        _PACKAGED_KEYS,
         ("in0", "out0"),
         False,
         "previous generation, kept for comparison",
@@ -78,9 +82,29 @@ CATALOG: dict[str, ModelSpec] = {
 }
 
 
+MODELS_ROOT_VARIABLE = "VULKANOCR_MODELS_ROOT"
+
+
 def default_models_root() -> Path:
-    """The spike checkout that holds the downloaded model sets."""
-    return Path(__file__).resolve().parent.parent.parent
+    """Where the downloaded model ports live.
+
+    The graphs are third-party ports of PaddleOCR's weights and are not
+    shipped with this package, so their location is somebody's choice rather
+    than a fact about the install: `VULKANOCR_MODELS_ROOT` names it, and the
+    fallback is the checkout this file sits in, which is where the setup in
+    the README clones them.
+    """
+    configured = os.environ.get(MODELS_ROOT_VARIABLE, "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    return Path(__file__).resolve().parents[2]
+
+
+def _dictionary_path(spec_dictionary: str, base: Path) -> Path:
+    """A dictionary shipped with this package, or one beside the models."""
+    if spec_dictionary == _PACKAGED_KEYS:
+        return Path(__file__).resolve().parent / "data" / _PACKAGED_KEYS
+    return base / spec_dictionary
 
 
 def models_for(name: str = DEFAULT_MODEL, root: Path | None = None) -> OcrModels:
@@ -94,7 +118,7 @@ def models_for(name: str = DEFAULT_MODEL, root: Path | None = None) -> OcrModels
     return OcrModels(
         det_param=base / spec.det,
         rec_param=base / spec.rec,
-        dictionary=base / spec.dictionary,
+        dictionary=_dictionary_path(spec.dictionary, base),
         blobs=spec.blobs,
         dictionary_includes_blank=spec.dictionary_includes_blank,
     )

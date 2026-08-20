@@ -2,7 +2,7 @@
 
 import pytest
 
-from ocr_engine.device import HardwareVulkanUnavailable, select_hardware_device
+from vulkanocr.device import HardwareVulkanUnavailableError, select_hardware_device
 
 
 class FakeInfo:
@@ -41,12 +41,12 @@ def test_the_software_rasteriser_is_never_selected():
 
 def test_software_only_is_a_refusal_not_a_fallback():
     runtime = FakeRuntime([FakeInfo("llvmpipe", 3)])
-    with pytest.raises(HardwareVulkanUnavailable):
+    with pytest.raises(HardwareVulkanUnavailableError):
         select_hardware_device(runtime)
 
 
 def test_no_devices_is_a_refusal():
-    with pytest.raises(HardwareVulkanUnavailable):
+    with pytest.raises(HardwareVulkanUnavailableError):
         select_hardware_device(FakeRuntime([]))
 
 

@@ -20,8 +20,8 @@ def crop_region(rgb: np.ndarray, region) -> np.ndarray:
     target_width = max(int(region.height * TARGET_HEIGHT / max(region.width, 1e-6)), 1)
     corners = cv2.boxPoints(region.rotated_rect())
     order = (0, 1, 3) if not region.vertical else (2, 3, 1)
-    source = np.float32([corners[index] for index in order])
-    destination = np.float32([[0, 0], [target_width, 0], [0, TARGET_HEIGHT]])
+    source = np.array([corners[index] for index in order], dtype=np.float32)
+    destination = np.array([[0, 0], [target_width, 0], [0, TARGET_HEIGHT]], dtype=np.float32)
     matrix = cv2.getAffineTransform(source, destination)
     return cv2.warpAffine(
         rgb,

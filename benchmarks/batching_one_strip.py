@@ -11,21 +11,27 @@ read on its own.
 
 from __future__ import annotations
 
-import pathlib, sys, time
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
+import pathlib
+import sys
+import time
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 import cv2
 import numpy as np
-from ocr_engine.catalog import models_for
-from ocr_engine.detection import detect_regions
-from ocr_engine.engine import OcrEngine
-from ocr_engine.recognition import MEAN, NORM, crop_region, decode_ctc
+
+from vulkanocr.catalog import models_for
+from vulkanocr.detection import detect_regions
+from vulkanocr.engine import OcrEngine
+from vulkanocr.recognition import MEAN, NORM, crop_region, decode_ctc
 
 GAP = 32  # white columns between crops
 
 
 def crops_of(engine, rgb):
-    regions = detect_regions(engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs)
+    regions = detect_regions(
+        engine._runtime, engine._det, rgb, engine._target_size, engine._models.blobs
+    )
     return [crop for crop in (crop_region(rgb, region) for region in regions) if crop.size]
 
 
@@ -68,7 +74,10 @@ def batched_texts(engine, crops, group):
         steps = logits.shape[0]
         scale = steps / strip.shape[1]
         for left, right in spans:
-            lo, hi = int(round(left * scale)), max(int(round(right * scale)), int(round(left * scale)) + 1)
+            lo, hi = (
+                int(round(left * scale)),
+                max(int(round(right * scale)), int(round(left * scale)) + 1),
+            )
             texts.append(decode_ctc(logits[lo:hi], engine._characters, offset)[0])
     return texts
 
@@ -82,7 +91,8 @@ image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-mediu
 rgb = np.ascontiguousarray(cv2.imread(image)[:, :, ::-1])
 engine = OcrEngine(models_for(model_set))
 crops = crops_of(engine, rgb)
-print(f"{model_set}: {len(crops)} crops, widths {min(c.shape[1] for c in crops)}..{max(c.shape[1] for c in crops)}")
+widths = [crop.shape[1] for crop in crops]
+print(f"{model_set}: {len(crops)} crops, widths {min(widths)}..{max(widths)}")
 
 single_texts(engine, crops[:2])
 start = time.perf_counter()
@@ -98,4 +108,7 @@ for group in (2, 4, 8, 16, len(crops)):
         got = batched_texts(engine, crops, group)
     ms = (time.perf_counter() - start) / 3 * 1000
     same = sum(1 for a, b in zip(base, got, strict=True) if a == b)
-    print(f"  {group:3} crops per call   {ms:8.1f} ms   {base_ms/ms:4.2f}x   identical {same}/{len(base)}")
+    print(
+        f"  {group:3} crops per call   {ms:8.1f} ms   {base_ms / ms:4.2f}x   "
+        f"identical {same}/{len(base)}"
+    )

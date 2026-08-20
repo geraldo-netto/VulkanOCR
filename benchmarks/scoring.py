@@ -32,9 +32,7 @@ def levenshtein(left, right) -> int:
     for i, a in enumerate(left, start=1):
         current = [i]
         for j, b in enumerate(right, start=1):
-            current.append(
-                min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a != b))
-            )
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a != b)))
         previous = current
     return previous[-1]
 

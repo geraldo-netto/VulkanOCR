@@ -1,28 +1,24 @@
 """End-to-end on the real Vulkan device; skipped when hardware is absent."""
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
 cv2 = pytest.importorskip("cv2")
 ncnn = pytest.importorskip("ncnn")
 
-from ocr_engine import (
-    CATALOG,
-    DEFAULT_MODEL,
-    HardwareVulkanUnavailable,
+from vulkanocr import (
+    HardwareVulkanUnavailableError,
     OcrEngine,
     OcrEngineError,
     OcrModels,
     models_for,
 )
-from ocr_engine.device import select_hardware_device
+from vulkanocr.device import select_hardware_device
 
 try:
     select_hardware_device(ncnn)
     HARDWARE = True
-except HardwareVulkanUnavailable:
+except HardwareVulkanUnavailableError:
     HARDWARE = False
 
 needs_gpu = pytest.mark.skipif(not HARDWARE, reason="no hardware Vulkan device")

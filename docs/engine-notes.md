@@ -1,4 +1,4 @@
-# OMNI-0351 MVP — PaddleOCR on ncnn over Vulkan, decoupled
+# Engine notes — how the port was built and what it costs
 
 Answers "is this truly doable without touching ncnn or PaddleOCR": **yes**,
 demonstrated end-to-end on this host's RX 6600 XT.
@@ -9,13 +9,13 @@ A minimal but clean engine package with the exact shape the eventual
 `omnitensor-ocr-engine` distribution would have:
 
 ```
-ocr_engine/
+src/vulkanocr/
   device.py       hardware-only Vulkan selection (no-CPU rule; llvmpipe refused)
-  detection.py    DB preprocess -> probability map -> oriented boxes
+  detection.py    DB preprocess -> probability map -> oriented boxes -> unclip
   recognition.py  affine crop -> CTC head -> greedy decode
   engine.py       facade: load once, read(rgb) -> OcrResult
   catalog.py      known model sets as data; default is PP-OCRv6 medium
-demo.py           CLI with sysfs gpu_busy_percent sampling
+  cli.py          the `vulkanocr` command, with sysfs gpu_busy_percent sampling
 tests/            21 tests: device policy (fake runtime), CTC vectors,
                   catalogue facts, live GPU
 ```
@@ -32,9 +32,9 @@ fp16 packed/storage/arithmetic disabled, matching the service's Vulkan policy.
 ## Run
 
 ```sh
-../.venv/bin/python demo.py ../sample-applet.png              # v6 medium
-../.venv/bin/python demo.py ../sample-applet.png --models v6-tiny
-../.venv/bin/python -m pytest tests/ -q                        # 21 passed
+.venv/bin/vulkanocr samples/sample-applet.png                 # v6 medium
+.venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
+.venv/bin/python -m pytest -q                                 # 21 passed
 ```
 
 ## Evidence (2026-08-15, this host)
@@ -70,8 +70,8 @@ real integration:
 
 ## Model generations available here
 
-`../nihui-port/` carries PP-OCR**v5** (nihui, ncnn's author, BSD-3, 2026-05-27).
-`../PaddleOCR-ncnn-CPP/models/` carries PP-OCR**v3/v4/v5/v6** plus two textline
+`nihui-port/` carries PP-OCR**v5** (nihui, ncnn's author, BSD-3, 2026-05-27).
+`PaddleOCR-ncnn-CPP/models/` carries PP-OCR**v3/v4/v5/v6** plus two textline
 orientation classifiers (Avafly, MIT, release v0.3.0 2026-06-13). PP-OCRv6 is
 the current generation in PaddleOCR main; the repository's latest release is
 v3.7.0 (2026-06-11).
@@ -94,7 +94,7 @@ low-confidence junk at all. A wrong blank convention does not crash — it
 shifts every character silently, which is why it is a stated field and a test
 rather than a guess.
 
-## Known gaps (carried from ../FINDINGS.md)
+## Known gaps (carried from findings.md)
 
 90°-rotated text unreadable (no orientation classifier), glyph-font icons
 decode as CJK noise below ~0.6 confidence, occasional dropped spaces between
