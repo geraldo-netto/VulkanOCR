@@ -19,8 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
-import cv2
-import numpy as np
+from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
 from vulkanocr.detection import detect_regions
@@ -68,7 +67,7 @@ def timed(call, runs=3):
 
 
 image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
-rgb = np.ascontiguousarray(cv2.imread(image)[:, :, ::-1])
+rgb = load_rgb(image)
 engine = OcrEngine(models_for(model_set))
 patches = crops_of(engine, rgb)
 print(f"{model_set} on {engine.device_name}: {len(patches)} crops")

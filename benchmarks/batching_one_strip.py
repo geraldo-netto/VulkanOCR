@@ -17,8 +17,8 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
-import cv2
 import numpy as np
+from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
 from vulkanocr.detection import detect_regions
@@ -88,7 +88,7 @@ def single_texts(engine, crops):
 
 
 image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
-rgb = np.ascontiguousarray(cv2.imread(image)[:, :, ::-1])
+rgb = load_rgb(image)
 engine = OcrEngine(models_for(model_set))
 crops = crops_of(engine, rgb)
 widths = [crop.shape[1] for crop in crops]

@@ -14,6 +14,24 @@ the property the caller of an OCR engine actually uses.
 from __future__ import annotations
 
 import unicodedata
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+
+def load_rgb(path: Path | str) -> np.ndarray:
+    """One image as a contiguous RGB array, or a refusal that names the file.
+
+    `cv2.imread` answers `None` for anything it cannot decode — a missing
+    path, a truncated PNG, a directory — and every runner here used to
+    subscript that answer immediately, turning a wrong path into an opaque
+    `TypeError` several frames from the cause.
+    """
+    image = cv2.imread(str(path))
+    if image is None:
+        raise FileNotFoundError(f"cannot read an image from {path}")
+    return np.ascontiguousarray(image[:, :, ::-1])
 
 
 def normalise(text: str) -> str:

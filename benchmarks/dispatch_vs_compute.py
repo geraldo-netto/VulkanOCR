@@ -7,9 +7,14 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
-import cv2
+from typing import Any
+
 import ncnn
+
+# The ncnn wheel ships no stubs, so the module is a seam like the engine's.
+ncnn_runtime: Any = ncnn
 import numpy as np
+from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
 from vulkanocr.detection import detect_regions
@@ -17,13 +22,13 @@ from vulkanocr.engine import OcrEngine
 from vulkanocr.recognition import crop_region, recognise_patch
 
 image = sys.argv[1]
-rgb = np.ascontiguousarray(cv2.imread(image)[:, :, ::-1])
+rgb = load_rgb(image)
 
 
 def build(model_set, fp16):
     class Tuned(OcrEngine):
         def _load_net(self, param_path):
-            net = ncnn.Net()
+            net = ncnn_runtime.Net()
             net.opt.use_vulkan_compute = True
             net.opt.use_fp16_packed = fp16
             net.opt.use_fp16_storage = fp16
@@ -34,7 +39,6 @@ def build(model_set, fp16):
             return net
 
     engine = Tuned(models_for(model_set))
-    engine._device_index = None
     return engine
 
 

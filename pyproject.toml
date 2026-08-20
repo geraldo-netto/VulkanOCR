@@ -71,13 +71,14 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C90", "BLE001", "PLC0415"]
 max-complexity = 8
 
 [tool.pyright]
-# The engine and its tests are checked against the environment that runs them,
-# so `cv2` and `ncnn` resolve to the wheels actually installed rather than to
-# nothing. The benchmark scripts are excluded: they import PaddleOCR and
-# Tesseract's bindings, which are deliberately not dependencies of this
-# package, and a type checker complaining that an optional comparison target
-# is absent says nothing useful.
-include = ["src", "tests"]
+# Everything is checked, against the environment that runs it, so `cv2` and
+# `ncnn` resolve to the wheels actually installed. The benchmarks are included
+# too: they are the evidence behind the README's numbers, and a script that
+# subscripts what `cv2.imread` returns without checking it is exactly the
+# defect a checker should catch. PaddleOCR is the one import it cannot
+# resolve — the comparison runs it from its own virtualenv, on an older
+# paddlepaddle — and that file says so at its head.
+include = ["src", "tests", "benchmarks"]
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "basic"

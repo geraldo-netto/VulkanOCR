@@ -5,14 +5,13 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
-import cv2
-import numpy as np
+from scoring import load_rgb
 
 from vulkanocr import detection, recognition
 from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
 
-rgb = np.ascontiguousarray(cv2.imread(sys.argv[1])[:, :, ::-1])
+rgb = load_rgb(sys.argv[1])
 engine = OcrEngine(models_for(sys.argv[2] if len(sys.argv) > 2 else "v6-medium"))
 engine.read(rgb)
 

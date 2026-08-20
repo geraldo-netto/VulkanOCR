@@ -5,14 +5,18 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
-import cv2
+from typing import Any
+
 import ncnn
-import numpy as np
+
+# The ncnn wheel ships no stubs, so the module is a seam like the engine's.
+ncnn_runtime: Any = ncnn
+from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
 
-rgb = np.ascontiguousarray(cv2.imread(sys.argv[1])[:, :, ::-1])
+rgb = load_rgb(sys.argv[1])
 name = sys.argv[2] if len(sys.argv) > 2 else "v6-medium"
 
 engine = OcrEngine(models_for(name))
@@ -27,7 +31,7 @@ vulkan = (time.perf_counter() - start) / 3
 # at load — so a second engine is built whose nets never touch the device.
 class CpuEngine(OcrEngine):
     def _load_net(self, param_path):
-        net = ncnn.Net()
+        net = ncnn_runtime.Net()
         net.opt.use_vulkan_compute = False
         net.opt.use_fp16_packed = False
         net.opt.use_fp16_storage = False

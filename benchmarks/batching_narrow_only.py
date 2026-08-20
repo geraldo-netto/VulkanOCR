@@ -14,8 +14,8 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
-import cv2
 import numpy as np
+from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
 from vulkanocr.detection import detect_regions
@@ -66,7 +66,7 @@ def read_packed(engine, crops, offset):
 
 
 image = sys.argv[1]
-rgb = np.ascontiguousarray(cv2.imread(image)[:, :, ::-1])
+rgb = load_rgb(image)
 engine = OcrEngine(models_for("v6-medium"))
 offset = 0 if engine._models.dictionary_includes_blank else 1
 regions = detect_regions(

@@ -10,9 +10,7 @@ import time
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-import cv2
-import numpy as np
-from scoring import score
+from scoring import load_rgb, score
 
 from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
@@ -25,11 +23,10 @@ engine = OcrEngine(models_for(model_set))
 rows = []
 # One warm pass first: the first read pays for shader compilation, and a
 # comparison of steady-state speed must not charge it to one engine only.
-warm = cv2.imread(str(corpus / cases[0]["image"]))[:, :, ::-1]
-engine.read(np.ascontiguousarray(warm))
+engine.read(load_rgb(corpus / cases[0]["image"]))
 
 for case in cases:
-    rgb = np.ascontiguousarray(cv2.imread(str(corpus / case["image"]))[:, :, ::-1])
+    rgb = load_rgb(corpus / case["image"])
     start = time.perf_counter()
     result = engine.read(rgb)
     elapsed = (time.perf_counter() - start) * 1000

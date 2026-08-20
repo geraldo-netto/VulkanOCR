@@ -87,9 +87,14 @@ def noisy(array, sigma):
 
 
 def jpeg(array, quality):
-    ok, buffer = cv2.imencode(".jpg", array[:, :, ::-1], [cv2.IMWRITE_JPEG_QUALITY, quality])
-    assert ok
-    return cv2.imdecode(buffer, cv2.IMREAD_COLOR)[:, :, ::-1]
+    """Round-trip through JPEG, so the corpus carries real compression noise."""
+    encoded, buffer = cv2.imencode(".jpg", array[:, :, ::-1], [cv2.IMWRITE_JPEG_QUALITY, quality])
+    if not encoded:
+        raise RuntimeError("the JPEG encoder refused this image")
+    decoded = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
+    if decoded is None:
+        raise RuntimeError("the JPEG decoder refused what the encoder produced")
+    return decoded[:, :, ::-1]
 
 
 def faded(array, factor):

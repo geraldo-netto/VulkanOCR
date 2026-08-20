@@ -1,4 +1,11 @@
-"""Read the corpus with upstream PaddleOCR (CPU) and score it identically."""
+"""Read the corpus with upstream PaddleOCR (CPU) and score it identically.
+
+Run from PaddleOCR's own virtualenv, not this project's: it needs
+`paddlepaddle<3.3` (see `docs/benchmarks.md`) and is deliberately not a
+dependency of the engine. That is why the import is unresolvable here.
+"""
+
+# pyright: reportMissingImports=false
 
 from __future__ import annotations
 
