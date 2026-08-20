@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json, pathlib, sys, time
-sys.path.insert(0, "/backups/disk2/projects/cinnamon/ocr-ncnn-spike/mvp")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 import cv2
@@ -34,5 +34,5 @@ for case in cases:
     print(f"{case['id']:34} cer={row['cer']:.3f} wer={row['wer']:.3f} {elapsed:7.1f} ms", flush=True)
 
 out = corpus.parent / f"results-spike-{model_set}.json"
-out.write_text(json.dumps({"engine": f"ocr-ncnn-spike/{model_set}", "device": engine.device_name, "rows": rows}, indent=2, ensure_ascii=False))
+out.write_text(json.dumps({"engine": f"vulkanocr/{model_set}", "device": engine.device_name, "rows": rows}, indent=2, ensure_ascii=False))
 print("device:", engine.device_name)

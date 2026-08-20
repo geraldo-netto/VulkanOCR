@@ -7,8 +7,8 @@ across the strip. This packs only crops below a width threshold and keeps the
 rest one to a call, then checks both halves of that claim.
 """
 from __future__ import annotations
-import sys, time
-sys.path.insert(0, "/backups/disk2/projects/cinnamon/ocr-ncnn-spike/mvp")
+import pathlib, sys, time
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
 import cv2, numpy as np
 from ocr_engine.catalog import models_for
 from ocr_engine.detection import detect_regions

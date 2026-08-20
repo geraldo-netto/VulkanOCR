@@ -15,3 +15,6 @@ nihui-port/
 PaddleOCR-ncnn-CPP/models/
 *.bin
 *.param
+
+# Upstream clone: github.com/Avafly/PaddleOCR-ncnn-CPP (MIT)
+PaddleOCR-ncnn-CPP/

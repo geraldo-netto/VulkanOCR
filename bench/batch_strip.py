@@ -11,8 +11,8 @@ read on its own.
 
 from __future__ import annotations
 
-import sys, time
-sys.path.insert(0, "/backups/disk2/projects/cinnamon/ocr-ncnn-spike/mvp")
+import pathlib, sys, time
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
 
 import cv2
 import numpy as np

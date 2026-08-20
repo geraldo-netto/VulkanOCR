@@ -12,10 +12,10 @@ device, with the decoded text compared line for line.
 
 from __future__ import annotations
 
-import sys, time
+import pathlib, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
-sys.path.insert(0, "/backups/disk2/projects/cinnamon/ocr-ncnn-spike/mvp")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
 
 import cv2
 import numpy as np

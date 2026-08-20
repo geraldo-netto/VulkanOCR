@@ -1,7 +1,7 @@
 """Is recognition dispatch-bound or compute-bound? And what does fp16 buy?"""
 from __future__ import annotations
-import sys, time
-sys.path.insert(0, "/backups/disk2/projects/cinnamon/ocr-ncnn-spike/mvp")
+import pathlib, sys, time
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
 import cv2, ncnn, numpy as np
 from ocr_engine.catalog import models_for
 from ocr_engine.detection import detect_regions

@@ -18,7 +18,16 @@ STRIDE = 32
 PAD_VALUE = 114.0
 BINARY_THRESHOLD = 0.3
 BOX_THRESHOLD = 0.6
+# The reference port replaces DB's unclip with a flat enlargement: every box
+# grows by 0.475 of its short side on all four sides, whatever its shape. DB's
+# own rule offsets a box by `area * ratio / perimeter`, which for a text line
+# is about 0.75 of its height — half as much again — so the flat rule shaves
+# ascenders, accents and the last glyph off long lines. That is where this
+# port loses to upstream on small text: `noite` read as `noíte`, `informação`
+# as `infomação`. `unclip_offset` is the DB rule, exact for the rectangles
+# `minAreaRect` produces, and needs no polygon clipper to compute.
 ENLARGE_RATIO = 1.95
+UNCLIP_RATIO = 1.5
 MIN_SIZE_FACTOR = 3.0
 MAX_CANDIDATES = 1000
 
@@ -111,8 +120,9 @@ def _regions(probability: np.ndarray, scale: float, wpad: int, hpad: int) -> lis
         if max(rw, rh) < MIN_SIZE_FACTOR * scale:
             continue
         rw, rh, angle, vertical = _oriented(rw, rh, angle)
-        rh += rw * (ENLARGE_RATIO - 1.0)
-        rw *= ENLARGE_RATIO
+        offset = unclip_offset(rw, rh)
+        rw += 2.0 * offset
+        rh += 2.0 * offset
         regions.append(
             TextRegion(
                 center_x=(cx - wpad // 2) / scale,
@@ -125,6 +135,19 @@ def _regions(probability: np.ndarray, scale: float, wpad: int, hpad: int) -> lis
             )
         )
     return regions
+
+
+def unclip_offset(short: float, long: float, ratio: float = UNCLIP_RATIO) -> float:
+    """How far out a detected box is pushed, by DB's own rule.
+
+    ``area * ratio / perimeter`` is what PaddleOCR's unclip applies through a
+    polygon offset; for a rectangle the offset is that distance on every side,
+    so the whole clipper dependency reduces to this one expression.
+    """
+    perimeter = 2.0 * (short + long)
+    if perimeter <= 0.0:
+        return 0.0
+    return short * long * ratio / perimeter
 
 
 def _oriented(rw: float, rh: float, angle: float) -> tuple[float, float, float, bool]:

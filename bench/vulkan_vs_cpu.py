@@ -1,6 +1,6 @@
 """Same models, same image: Vulkan lane against ncnn's own CPU lane."""
-import sys, time
-sys.path.insert(0, "/backups/disk2/projects/cinnamon/ocr-ncnn-spike/mvp")
+import pathlib, sys, time
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "mvp"))
 import cv2, numpy as np, ncnn
 from ocr_engine.catalog import models_for
 from ocr_engine.engine import OcrEngine
