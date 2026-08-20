@@ -65,7 +65,15 @@ class OcrModels:
             self.dictionary,
         ):
             if not Path(path).is_file():
-                raise OcrEngineError("model-missing", f"model file is absent: {path}")
+                raise OcrEngineError(
+                    "model-missing",
+                    f"model file is absent: {path}\n"
+                    "The model graphs are third-party ncnn ports and are not shipped "
+                    "with this package. Clone them where THIRD-PARTY.md describes — "
+                    "github.com/Avafly/PaddleOCR-ncnn-CPP for PP-OCRv6, "
+                    "github.com/nihui/ncnn-android-ppocrv5 for PP-OCRv5 — and point "
+                    "VULKANOCR_MODELS_ROOT at the directory that contains them.",
+                )
         return self
 
 

@@ -97,6 +97,10 @@ def default_models_root() -> Path:
     configured = os.environ.get(MODELS_ROOT_VARIABLE, "").strip()
     if configured:
         return Path(configured).expanduser()
+    # From a checkout, parents[2] is the repository root, where the README's
+    # setup clones the model repositories. From an installed wheel the same
+    # hop lands in site-packages' parent — nothing lives there, so the miss
+    # is reported against a root that at least exists and is settable.
     return Path(__file__).resolve().parents[2]
 
 
