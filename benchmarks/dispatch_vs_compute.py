@@ -18,7 +18,6 @@ from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import crop_region
 
 image = sys.argv[1]
 rgb = load_rgb(image)
@@ -28,11 +27,6 @@ def build(model_set, fp16):
     return OcrEngine(models_for(model_set), use_fp16=fp16)
 
 
-def crops_of(engine):
-    regions = engine.detect(rgb)
-    return [c for c in (crop_region(rgb, r) for r in regions) if c.size]
-
-
 def recognise_all(engine, crops):
     return [engine.recognise(c) for c in crops]
 
@@ -40,7 +34,7 @@ def recognise_all(engine, crops):
 for model_set in ("v6-medium", "v6-tiny"):
     for fp16 in (False, True):
         engine = build(model_set, fp16)
-        crops = crops_of(engine)
+        crops = [patch for _region, patch in engine.crops(rgb)]
         pixels = sum(c.shape[0] * c.shape[1] for c in crops)
         recognise_all(engine, crops[:3])
         start = time.perf_counter()
@@ -56,7 +50,7 @@ for model_set in ("v6-medium", "v6-tiny"):
 
 # Dispatch overhead measured directly: the same crop, N times, vs one crop N times wider.
 engine = build("v6-medium", False)
-crops = crops_of(engine)
+crops = [patch for _region, patch in engine.crops(rgb)]
 narrow = min(crops, key=lambda c: c.shape[1])
 engine.recognise(narrow)
 start = time.perf_counter()

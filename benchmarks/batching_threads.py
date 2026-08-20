@@ -25,10 +25,6 @@ from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
 
 
-def crops_of(engine, rgb):
-    return engine.crops(rgb)
-
-
 def sequential(engine, patches):
     return [engine.recognise(patch) for _region, patch in patches]
 
@@ -49,7 +45,7 @@ def timed(call, runs=3):
 image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
 rgb = load_rgb(image)
 engine = OcrEngine(models_for(model_set))
-patches = crops_of(engine, rgb)
+patches = engine.crops(rgb)
 print(f"{model_set} on {engine.device_name}: {len(patches)} crops")
 
 base_ms, base_out = timed(lambda: sequential(engine, patches))

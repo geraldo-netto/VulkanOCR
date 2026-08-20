@@ -17,19 +17,11 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
-import numpy as np
 from scoring import load_rgb
+from strips import decode_spans, pack
 
 from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import crop_region
-
-GAP = 32  # white columns between crops
-
-
-def crops_of(engine, rgb):
-    regions = engine.detect(rgb)
-    return [crop for crop in (crop_region(rgb, region) for region in regions) if crop.size]
 
 
 def logits_for(engine, strip):
@@ -37,31 +29,11 @@ def logits_for(engine, strip):
     return engine.logits(strip)
 
 
-def pack(crops):
-    width = sum(crop.shape[1] for crop in crops) + GAP * (len(crops) - 1)
-    strip = np.full((48, width, 3), 255, dtype=np.uint8)
-    spans, x = [], 0
-    for crop in crops:
-        strip[:, x : x + crop.shape[1]] = crop
-        spans.append((x, x + crop.shape[1]))
-        x += crop.shape[1] + GAP
-    return strip, spans
-
-
 def batched_texts(engine, crops, group):
     texts = []
     for start in range(0, len(crops), group):
-        chunk = crops[start : start + group]
-        strip, spans = pack(chunk)
-        logits = logits_for(engine, strip)
-        steps = logits.shape[0]
-        scale = steps / strip.shape[1]
-        for left, right in spans:
-            lo, hi = (
-                int(round(left * scale)),
-                max(int(round(right * scale)), int(round(left * scale)) + 1),
-            )
-            texts.append(engine.decode(logits[lo:hi])[0])
+        strip, spans = pack(crops[start : start + group])
+        texts.extend(decode_spans(engine, strip, spans))
     return texts
 
 
@@ -72,7 +44,7 @@ def single_texts(engine, crops):
 image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
 rgb = load_rgb(image)
 engine = OcrEngine(models_for(model_set))
-crops = crops_of(engine, rgb)
+crops = [patch for _region, patch in engine.crops(rgb)]
 widths = [crop.shape[1] for crop in crops]
 print(f"{model_set}: {len(crops)} crops, widths {min(widths)}..{max(widths)}")
 

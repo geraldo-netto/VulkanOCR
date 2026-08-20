@@ -14,14 +14,11 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
-import numpy as np
 from scoring import load_rgb
+from strips import decode_spans, pack
 
 from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
-from vulkanocr.recognition import crop_region
-
-GAP = 32
 
 
 def logits_for(engine, strip):
@@ -34,28 +31,14 @@ def read_one(engine, crop):
 
 
 def read_packed(engine, crops):
-    width = sum(c.shape[1] for c in crops) + GAP * (len(crops) - 1)
-    strip = np.full((48, width, 3), 255, dtype=np.uint8)
-    spans, x = [], 0
-    for crop in crops:
-        strip[:, x : x + crop.shape[1]] = crop
-        spans.append((x, x + crop.shape[1]))
-        x += crop.shape[1] + GAP
-    logits = logits_for(engine, strip)
-    scale = logits.shape[0] / width
-    out = []
-    for left, right in spans:
-        lo = int(round(left * scale))
-        hi = max(int(round(right * scale)), lo + 1)
-        out.append(engine.decode(logits[lo:hi])[0])
-    return out
+    strip, spans = pack(crops)
+    return decode_spans(engine, strip, spans)
 
 
 image = sys.argv[1]
 rgb = load_rgb(image)
 engine = OcrEngine(models_for("v6-medium"))
-regions = engine.detect(rgb)
-crops = [c for c in (crop_region(rgb, r) for r in regions) if c.size]
+crops = [patch for _region, patch in engine.crops(rgb)]
 base = [read_one(engine, c) for c in crops]
 
 for threshold in (0, 96, 160, 256, 10_000):
