@@ -111,6 +111,39 @@ def _dictionary_path(spec_dictionary: str, base: Path) -> Path:
     return base / spec_dictionary
 
 
+# The per-port facts an external consumer needs when it holds model files
+# outside this catalog's clone layout (VOCR-0061): omnitensor's adapters
+# were each restating the blob names and the blank convention — the two
+# facts that produce fluent-looking nonsense when wrong — so a port drift
+# would have broken three codebases silently. Name the port; inherit its
+# facts.
+PORT_FACTS: dict[str, tuple[tuple[str, str], bool]] = {
+    "avafly-v6": (("input", "output"), True),
+    "nihui-v5": (("in0", "out0"), False),
+}
+
+
+def models_for_port(
+    port: str,
+    det_param: Path,
+    rec_param: Path,
+    dictionary: Path,
+) -> OcrModels:
+    """An :class:`OcrModels` from explicit paths and a named port's facts."""
+    try:
+        blobs, includes_blank = PORT_FACTS[port]
+    except KeyError:
+        known = ", ".join(sorted(PORT_FACTS))
+        raise ValueError(f"unknown model port {port!r}; known ports: {known}") from None
+    return OcrModels(
+        det_param=Path(det_param),
+        rec_param=Path(rec_param),
+        dictionary=Path(dictionary),
+        blobs=blobs,
+        dictionary_includes_blank=includes_blank,
+    )
+
+
 def models_for(name: str = DEFAULT_MODEL, root: Path | None = None) -> OcrModels:
     """Build an :class:`OcrModels` record for a catalogued model set."""
     try:

@@ -61,3 +61,31 @@ def test_the_engine_offers_its_halves_to_consumers_that_time_them_apart():
 
     for name in ("detect", "crops", "recognise", "logits", "decode"):
         assert callable(getattr(OcrEngine, name)), name
+
+
+def test_a_named_port_supplies_its_own_facts(tmp_path):
+    """External consumers name the port instead of restating it (VOCR-0061)."""
+    from vulkanocr import models_for_port
+
+    models = models_for_port(
+        "avafly-v6", tmp_path / "det.param", tmp_path / "rec.param", tmp_path / "keys.txt"
+    )
+    assert models.blobs == ("input", "output")
+    assert models.dictionary_includes_blank is True
+    assert models.ctc_offset == 0
+    nihui = models_for_port("nihui-v5", tmp_path / "d", tmp_path / "r", tmp_path / "k")
+    assert nihui.blobs == ("in0", "out0")
+    assert nihui.ctc_offset == 1
+    with pytest.raises(ValueError, match="unknown model port"):
+        models_for_port("mystery-port", tmp_path / "d", tmp_path / "r", tmp_path / "k")
+
+
+def test_the_catalog_and_the_port_facts_agree():
+    """The clone-layout catalog and the port registry state the same facts."""
+    from vulkanocr.catalog import PORT_FACTS
+
+    for name, spec in CATALOG.items():
+        port = "nihui-v5" if name.startswith("v5") else "avafly-v6"
+        blobs, includes_blank = PORT_FACTS[port]
+        assert spec.blobs == blobs, name
+        assert spec.dictionary_includes_blank is includes_blank, name
