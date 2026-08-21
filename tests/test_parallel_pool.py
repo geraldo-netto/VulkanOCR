@@ -310,3 +310,36 @@ def test_close_is_safe_to_repeat():
     pool.close()
     # The sentinel went out exactly once per channel.
     assert [channel.sent for channel in pool._requests.values()] == [[None]]
+
+
+def test_a_pool_with_every_worker_retired_still_reads_on_the_primary():
+    """Zero names means the fallback, not a crash (VOCR-0048).
+
+    With the last worker retired, dispatch reached min() over no prices and
+    raised an unnamed ValueError while the in-process primary engine — which
+    detection already runs on — could answer the page.
+    """
+
+    import numpy as np
+
+    from vulkanocr.detection import TextRegion
+
+    region = TextRegion(
+        center_x=10.0,
+        center_y=10.0,
+        width=10.0,
+        height=90.0,
+        angle=90.0,
+        vertical=False,
+        score=0.9,
+    )
+    pairs = [(region, np.zeros((48, 100, 3), dtype=np.uint8))] * 3
+    pool = _pool(replies=_Replies(), devices=[], workers=[])
+    pool._primary = SimpleNamespace(
+        crops=lambda _rgb: pairs, device_name="Fast GPU", recognise=lambda _p: ("text", 0.9)
+    )
+
+    result = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+
+    assert result.device_name == "Fast GPU"
+    assert [line.text for line in result.lines] == ["text", "text", "text"]

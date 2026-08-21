@@ -206,7 +206,10 @@ class ParallelOcr:
         self._generation += 1
         generation = self._generation
         pairs = self._primary.crops(rgb)
-        if len(self._names) == 1 or len(pairs) < 2:
+        # <= 1, not == 1: with every worker retired the names are empty, and
+        # dispatching to nobody crashed on min() of no prices while the
+        # in-process primary could answer the page (VOCR-0048).
+        if len(self._names) <= 1 or len(pairs) < 2:
             # The crops in hand are the read: `self._primary.read(rgb)` here
             # ran detection a second time from scratch, so a one-GPU machine
             # paid it twice on every --all-gpus read (VOCR-0040).
