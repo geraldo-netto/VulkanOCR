@@ -193,3 +193,19 @@ class TestHalfAnEngineIsAskedFor:
         with pytest.raises(OcrEngineError) as refusal:
             self.engine(tmp_path, ())
         assert refusal.value.code == "nets-invalid"
+
+    def test_a_recognition_only_engine_ignores_a_missing_detection_graph(self, tmp_path):
+        """The halves asked for are the halves that must exist (VOCR-0052)."""
+        from vulkanocr.engine import OcrEngine, OcrModels
+
+        runtime = FakeRuntime([FakeInfo("Radeon", 0)])
+        runtime.Net = _FakeNet
+        for name in ("model-rec",):
+            (tmp_path / f"{name}.param").write_text("7767517\n")
+            (tmp_path / f"{name}.bin").write_bytes(b"")
+        keys = tmp_path / "keys.txt"
+        keys.write_text("a\nb\n")
+        models = OcrModels(tmp_path / "absent-det.param", tmp_path / "model-rec.param", keys)
+
+        engine = OcrEngine(models, runtime=runtime, nets=("rec",))
+        assert engine._det is None and engine._rec is not None

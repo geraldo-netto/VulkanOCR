@@ -56,14 +56,19 @@ class OcrModels:
         """
         return 0 if self.dictionary_includes_blank else 1
 
-    def validated(self) -> OcrModels:
-        for path in (
-            self.det_param,
-            self.det_param.with_suffix(".bin"),
-            self.rec_param,
-            self.rec_param.with_suffix(".bin"),
-            self.dictionary,
-        ):
+    def validated(self, nets: tuple[str, ...] = ("det", "rec")) -> OcrModels:
+        """These files exist on disk — the halves asked for, dictionary always.
+
+        A recognition-only engine (VOCR-0042) used to be refused over a
+        missing detection graph it would never load (VOCR-0052): a half
+        engine's contract validates half the catalog entry.
+        """
+        required: list[Path] = [self.dictionary]
+        if "det" in nets:
+            required += [self.det_param, self.det_param.with_suffix(".bin")]
+        if "rec" in nets:
+            required += [self.rec_param, self.rec_param.with_suffix(".bin")]
+        for path in required:
             if not Path(path).is_file():
                 raise OcrEngineError(
                     "model-missing",
@@ -154,7 +159,10 @@ class OcrEngine:
             except ImportError as error:  # pragma: no cover - environment boundary
                 raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
         self._runtime: Any = runtime
-        self._models = models.validated()
+        # The nets choice is checked before it decides what must exist.
+        if not nets or any(name not in ("det", "rec") for name in nets):
+            raise OcrEngineError("nets-invalid", "nets must name 'det', 'rec', or both")
+        self._models = models.validated(nets)
         self._target_size = int(target_size)
         # Constructor knobs rather than a subclass seam: two benchmarks used
         # to override _load_net for exactly these two flags, and both copies
@@ -168,8 +176,6 @@ class OcrEngine:
         # A caller may ask for half an engine (VOCR-0042): a pool worker only
         # ever recognises, and its unused detection net still held hundreds
         # of MiB of Vulkan allocations on every device.
-        if not nets or any(name not in ("det", "rec") for name in nets):
-            raise OcrEngineError("nets-invalid", "nets must name 'det', 'rec', or both")
         self._det = None
         self._rec = None
         try:
