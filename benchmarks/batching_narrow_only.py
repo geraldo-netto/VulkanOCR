@@ -21,13 +21,8 @@ from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
 
 
-def logits_for(engine, strip):
-    """The engine's own preprocessing and extraction, on one packed strip."""
-    return engine.logits(strip)
-
-
 def read_one(engine, crop):
-    return engine.decode(logits_for(engine, crop))[0]
+    return engine.decode(engine.logits(crop))[0]
 
 
 def read_packed(engine, crops):

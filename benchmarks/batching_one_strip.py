@@ -24,11 +24,6 @@ from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
 
 
-def logits_for(engine, strip):
-    """The engine's own preprocessing and extraction, on one packed strip."""
-    return engine.logits(strip)
-
-
 def batched_texts(engine, crops, group):
     texts = []
     for start in range(0, len(crops), group):
@@ -38,7 +33,7 @@ def batched_texts(engine, crops, group):
 
 
 def single_texts(engine, crops):
-    return [engine.decode(logits_for(engine, crop))[0] for crop in crops]
+    return [engine.decode(engine.logits(crop))[0] for crop in crops]
 
 
 def main() -> int:
