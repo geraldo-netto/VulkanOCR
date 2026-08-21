@@ -44,24 +44,39 @@ _PROBE_COLUMNS = 96
 
 
 def _worker(device_index: int, models: OcrModels, use_fp16: bool, requests, replies) -> None:
-    """One process, one device, one engine; runs until it receives ``None``."""
-    import ncnn  # noqa: PLC0415 - imported in the child on purpose
+    """One process, one device, one engine; runs until it receives ``None``.
 
-    device = next(d for d in hardware_devices(ncnn) if d.index == device_index)
-    engine = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=device)
-    probe = np.full((48, _PROBE_COLUMNS, 3), 255, dtype=np.uint8)
-    engine.recognise(probe)  # shader warm-up
-    started = time.perf_counter()
-    engine.recognise(probe)
-    seed = (time.perf_counter() - started) * 1000 / _PROBE_COLUMNS
-    replies.put(("ready", device_index, engine.device_name, seed))
-    while True:
-        message = requests.get()
-        if message is None:
-            engine.close()
-            return
-        index, patch = message
-        replies.put(("done", device_index, index, engine.recognise(patch)))
+    Anything that raises is reported as an ``("error", ...)`` reply before the
+    process dies: an unhandled raise killed the child and the parent could
+    only say "exited with code 1", with the actual cause stranded on the
+    child's inherited stderr (VOCR-0037).
+    """
+    try:
+        import ncnn  # noqa: PLC0415 - imported in the child on purpose
+
+        device = next(d for d in hardware_devices(ncnn) if d.index == device_index)
+        engine = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=device)
+    except BaseException as error:  # noqa: BLE001 - the reply is the report
+        replies.put(("error", device_index, repr(error)))
+        raise
+    try:
+        probe = np.full((48, _PROBE_COLUMNS, 3), 255, dtype=np.uint8)
+        engine.recognise(probe)  # shader warm-up
+        started = time.perf_counter()
+        engine.recognise(probe)
+        seed = (time.perf_counter() - started) * 1000 / _PROBE_COLUMNS
+        replies.put(("ready", device_index, engine.device_name, seed))
+        while True:
+            message = requests.get()
+            if message is None:
+                return
+            index, patch = message
+            replies.put(("done", device_index, index, engine.recognise(patch)))
+    except BaseException as error:  # noqa: BLE001 - the reply is the report
+        replies.put(("error", device_index, repr(error)))
+        raise
+    finally:
+        engine.close()
 
 
 class ParallelOcr:
@@ -113,7 +128,7 @@ class ParallelOcr:
 
         while True:
             try:
-                return self._replies.get(timeout=0.5)
+                message = self._replies.get(timeout=0.5)
             except Empty:
                 for process, device in zip(self._workers, self._devices, strict=True):
                     if not process.is_alive():
@@ -121,6 +136,14 @@ class ParallelOcr:
                             "worker-died",
                             f"the GPU worker for {device.name} exited with code {process.exitcode}",
                         ) from None
+                continue
+            if message[0] == "error":
+                _kind, index, detail = message
+                device = next(d for d in self._devices if d.index == index)
+                raise OcrEngineError(
+                    "worker-failed", f"the GPU worker for {device.name} raised {detail}"
+                )
+            return message
 
     @property
     def device_names(self) -> tuple[str, ...]:
