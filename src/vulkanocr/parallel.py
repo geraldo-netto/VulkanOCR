@@ -35,7 +35,7 @@ from typing import Any
 import numpy as np
 
 from .device import hardware_devices
-from .engine import OcrEngine, OcrModels, OcrResult, assemble_result
+from .engine import OcrEngine, OcrEngineError, OcrModels, OcrResult, assemble_result
 
 # One probe strip per worker, recognised twice at start-up: the second pass is
 # the seed price (ms per pixel column) the dispatcher plans with before it has
@@ -91,8 +91,6 @@ class ParallelOcr:
         try:
             import ncnn  # noqa: PLC0415 - only to enumerate devices here
         except ImportError as error:  # pragma: no cover - environment boundary
-            from .engine import OcrEngineError  # noqa: PLC0415
-
             raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
         devices = hardware_devices(ncnn)
         self._devices = devices
@@ -138,8 +136,6 @@ class ParallelOcr:
         every process is still alive; a dead one is an error with a name, not
         an eternity.
         """
-        from .engine import OcrEngineError  # noqa: PLC0415 - avoids a cycle at import
-
         while True:
             try:
                 message = self._replies.get(timeout=0.5)
