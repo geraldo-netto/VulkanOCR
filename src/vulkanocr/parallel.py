@@ -218,6 +218,9 @@ class ParallelOcr:
             process.join(timeout=10)
             if process.is_alive():
                 process.terminate()
+                # Reaped, not just killed: without this join the child stayed
+                # a zombie for the parent's whole life (VOCR-0046).
+                process.join(timeout=10)
         self._primary.close()
 
     def __enter__(self) -> ParallelOcr:
