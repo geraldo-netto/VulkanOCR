@@ -248,29 +248,9 @@ class OcrEngine:
 
     def read(self, rgb: np.ndarray) -> OcrResult:
         """Recognise every text line in an RGB uint8 array."""
-        lines = []
-        undecoded = 0
-        for region, patch in self.crops(rgb):
-            text, confidence = self.recognise(patch)
-            if not text:
-                undecoded += 1
-                continue
-            lines.append(
-                OcrLine(
-                    text=text,
-                    confidence=confidence,
-                    box_score=region.score,
-                    center_x=region.center_x,
-                    center_y=region.center_y,
-                    thickness=region.width,
-                    length=region.height,
-                    angle=region.angle,
-                    vertical=region.vertical,
-                )
-            )
-        lines.sort(key=lambda line: (line.center_y, line.center_x))
-        return OcrResult(
-            device_name=self._device.name, lines=tuple(lines), undecoded_regions=undecoded
+        return assemble_result(
+            self._device.name,
+            ((region, self.recognise(patch)) for region, patch in self.crops(rgb)),
         )
 
     def _load_net(self, param: Path):
@@ -310,3 +290,35 @@ class OcrEngine:
         if len(characters) < 2:
             raise OcrEngineError("dictionary-invalid", "dictionary has fewer than two classes")
         return tuple(characters)
+
+
+def assemble_result(device_name: str, recognised) -> OcrResult:
+    """One `OcrResult` from `(region, (text, confidence))` pairs.
+
+    The single assembly both engines share: `OcrEngine.read` feeds it
+    straight off its own recognitions and `ParallelOcr` from replies that
+    arrive out of order. It existed twice, line for line, and a change to
+    the sort key or a new `OcrLine` field in one silently diverged the
+    other (VOCR-0041).
+    """
+    lines = []
+    undecoded = 0
+    for region, (text, confidence) in recognised:
+        if not text:
+            undecoded += 1
+            continue
+        lines.append(
+            OcrLine(
+                text=text,
+                confidence=confidence,
+                box_score=region.score,
+                center_x=region.center_x,
+                center_y=region.center_y,
+                thickness=region.width,
+                length=region.height,
+                angle=region.angle,
+                vertical=region.vertical,
+            )
+        )
+    lines.sort(key=lambda line: (line.center_y, line.center_x))
+    return OcrResult(device_name=device_name, lines=tuple(lines), undecoded_regions=undecoded)

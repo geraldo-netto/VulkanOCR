@@ -35,7 +35,7 @@ from typing import Any
 import numpy as np
 
 from .device import hardware_devices
-from .engine import OcrEngine, OcrLine, OcrModels, OcrResult
+from .engine import OcrEngine, OcrModels, OcrResult, assemble_result
 
 # One probe strip per worker, recognised twice at start-up: the second pass is
 # the seed price (ms per pixel column) the dispatcher plans with before it has
@@ -178,7 +178,7 @@ class ParallelOcr:
             results[crop_index] = (region, answer)
             assign()
 
-        return _assembled(results, " + ".join(self.device_names))
+        return assemble_result(" + ".join(self.device_names), results)
 
     def close(self) -> None:
         for channel in self._requests.values():
@@ -196,31 +196,6 @@ class ParallelOcr:
 
     def __exit__(self, *_exception) -> None:
         self.close()
-
-
-def _assembled(results: list, device_name: str) -> OcrResult:
-    """The same assembly `OcrEngine.read` does, from indexed results."""
-    lines = []
-    undecoded = 0
-    for region, (text, confidence) in results:
-        if not text:
-            undecoded += 1
-            continue
-        lines.append(
-            OcrLine(
-                text=text,
-                confidence=confidence,
-                box_score=region.score,
-                center_x=region.center_x,
-                center_y=region.center_y,
-                thickness=region.width,
-                length=region.height,
-                angle=region.angle,
-                vertical=region.vertical,
-            )
-        )
-    lines.sort(key=lambda line: (line.center_y, line.center_x))
-    return OcrResult(device_name=device_name, lines=tuple(lines), undecoded_regions=undecoded)
 
 
 __all__ = ["ParallelOcr"]
