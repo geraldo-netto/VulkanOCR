@@ -55,7 +55,9 @@ def _worker(device_index: int, models: OcrModels, use_fp16: bool, requests, repl
         import ncnn  # noqa: PLC0415 - imported in the child on purpose
 
         device = next(d for d in hardware_devices(ncnn) if d.index == device_index)
-        engine = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=device)
+        # Recognition only: the worker never detects, and the detection
+        # net's Vulkan allocations were dead weight on every device (VOCR-0042).
+        engine = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=device, nets=("rec",))
     except BaseException as error:  # noqa: BLE001 - the reply is the report
         replies.put(("error", device_index, repr(error)))
         raise

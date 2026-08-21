@@ -139,6 +139,7 @@ class OcrEngine:
         use_vulkan: bool = True,
         use_fp16: bool = False,
         device: Any = None,
+        nets: tuple[str, ...] = ("det", "rec"),
     ):
         """`runtime` is the ncnn module, or anything shaped like it.
 
@@ -164,11 +165,18 @@ class OcrEngine:
         # engine per card — otherwise the most capable one is selected.
         self._device = device if device is not None else select_hardware_device(runtime)
         self._characters = self._load_dictionary(models.dictionary)
+        # A caller may ask for half an engine (VOCR-0042): a pool worker only
+        # ever recognises, and its unused detection net still held hundreds
+        # of MiB of Vulkan allocations on every device.
+        if not nets or any(name not in ("det", "rec") for name in nets):
+            raise OcrEngineError("nets-invalid", "nets must name 'det', 'rec', or both")
         self._det = None
         self._rec = None
         try:
-            self._det = self._load_net(models.det_param)
-            self._rec = self._load_net(models.rec_param)
+            if "det" in nets:
+                self._det = self._load_net(models.det_param)
+            if "rec" in nets:
+                self._rec = self._load_net(models.rec_param)
         except BaseException:
             # A recognition graph that refuses to load must not strand the
             # detection net's ~hundreds of MiB of Vulkan allocations on an
@@ -209,6 +217,8 @@ class OcrEngine:
         checker could protect from a rename.
         """
         self._validated(rgb)
+        if self._det is None:
+            raise OcrEngineError("net-unloaded", "this engine was built without the detection net")
         return detect_regions(self._runtime, self._det, rgb, self._target_size, self._models.blobs)
 
     def crops(self, rgb: np.ndarray) -> list[tuple]:
@@ -222,6 +232,10 @@ class OcrEngine:
 
     def recognise(self, patch: np.ndarray) -> tuple[str, float]:
         """One rectified patch through the recognition net and the CTC decode."""
+        if self._rec is None:
+            raise OcrEngineError(
+                "net-unloaded", "this engine was built without the recognition net"
+            )
         return recognise_patch(
             self._runtime,
             self._rec,
@@ -233,6 +247,10 @@ class OcrEngine:
 
     def logits(self, patch: np.ndarray) -> np.ndarray:
         """One patch's raw CTC logits, for callers that decode segments themselves."""
+        if self._rec is None:
+            raise OcrEngineError(
+                "net-unloaded", "this engine was built without the recognition net"
+            )
         return patch_logits(self._runtime, self._rec, patch, self._models.blobs)
 
     def decode(self, logits: np.ndarray) -> tuple[str, float]:

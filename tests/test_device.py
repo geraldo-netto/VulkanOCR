@@ -154,3 +154,42 @@ class TestHardwareDeviceEnumeration:
 
         with pytest.raises(HardwareVulkanUnavailableError):
             hardware_devices(FakeRuntime([FakeInfo("llvmpipe", 3)]))
+
+
+class TestHalfAnEngineIsAskedFor:
+    """A pool worker only recognises; its detection net was dead weight
+    on every device (VOCR-0042)."""
+
+    def engine(self, tmp_path, nets):
+        from vulkanocr.engine import OcrEngine, OcrModels
+
+        runtime = FakeRuntime([FakeInfo("Radeon", 0)])
+        runtime.Net = _FakeNet
+        for name in ("model-det", "model-rec"):
+            (tmp_path / f"{name}.param").write_text("7767517\n")
+            (tmp_path / f"{name}.bin").write_bytes(b"")
+        keys = tmp_path / "keys.txt"
+        keys.write_text("a\nb\n")
+        models = OcrModels(tmp_path / "model-det.param", tmp_path / "model-rec.param", keys)
+        return OcrEngine(models, runtime=runtime, nets=nets)
+
+    def test_a_recognition_only_engine_loads_no_detection_net(self, tmp_path):
+        import numpy as np
+        import pytest
+
+        from vulkanocr.engine import OcrEngineError
+
+        engine = self.engine(tmp_path, ("rec",))
+        assert engine._det is None and engine._rec is not None
+        with pytest.raises(OcrEngineError) as refusal:
+            engine.detect(np.zeros((4, 4, 3), dtype=np.uint8))
+        assert refusal.value.code == "net-unloaded"
+
+    def test_asking_for_no_net_at_all_is_refused(self, tmp_path):
+        import pytest
+
+        from vulkanocr.engine import OcrEngineError
+
+        with pytest.raises(OcrEngineError) as refusal:
+            self.engine(tmp_path, ())
+        assert refusal.value.code == "nets-invalid"
