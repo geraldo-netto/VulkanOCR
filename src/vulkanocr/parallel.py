@@ -71,7 +71,10 @@ def _worker(device_index: int, models: OcrModels, use_fp16: bool, requests, repl
             if message is None:
                 return
             generation, index, patch = message
-            replies.put(("done", device_index, generation, index, engine.recognise(patch)))
+            started = time.perf_counter()
+            answer = engine.recognise(patch)
+            elapsed = (time.perf_counter() - started) * 1000
+            replies.put(("done", device_index, generation, index, answer, elapsed))
     except BaseException as error:  # noqa: BLE001 - the reply is the report
         replies.put(("error", device_index, repr(error)))
         raise
@@ -249,18 +252,33 @@ class ParallelOcr:
 
         assign()
         while outstanding:
-            kind, index, reply_generation, crop_index, answer = self._answer()
+            kind, index, reply_generation, crop_index, answer, elapsed = self._answer()
             assert kind == "done"
             if reply_generation != generation:
                 # A leftover from a read that raised; its page is gone.
                 continue
             outstanding -= 1
             busy.discard(index)
-            region, _patch = pairs[crop_index]
+            region, patch = pairs[crop_index]
+            self._reprice(index, elapsed, patch.shape[1])
             results[crop_index] = (region, answer)
             assign()
 
         return results
+
+    def _reprice(self, index: int, elapsed_ms: float, columns: int) -> None:
+        """Refine a device's ms-per-column from the crop it just finished.
+
+        The probe seed was written once and never touched (VOCR-0039), so a
+        device whose 96-column white strip was unrepresentative — fp16,
+        clocks still ramping, an asymmetric detection load — mis-priced
+        every assignment for the pool's whole life. An equal-weight blend:
+        old enough to smooth one noisy crop, new enough that a wrong seed
+        is halved by every real one.
+        """
+        if columns < 1 or index not in self._cost:
+            return
+        self._cost[index] = (self._cost[index] + elapsed_ms / columns) / 2
 
     def close(self) -> None:
         for channel in self._requests.values():
