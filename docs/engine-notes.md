@@ -15,7 +15,8 @@ src/vulkanocr/
   recognition.py  affine crop -> CTC head -> greedy decode
   engine.py       facade: load once, read(rgb) -> OcrResult
   catalog.py      known model sets as data; default is PP-OCRv6 medium
-  cli.py          the `vulkanocr` command, with sysfs gpu_busy_percent sampling
+  cli.py          the `vulkanocr` command
+  proof.py        sysfs gpu_busy_percent sampling, as a context manager
 tests/            21 tests: device policy (fake runtime), CTC vectors,
                   catalogue facts, live GPU
 ```
