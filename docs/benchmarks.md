@@ -26,7 +26,11 @@ python3 benchmarks/read_with_tesseract.py /tmp/corpus 6
 python3 benchmarks/compare_engines.py /tmp
 ```
 
-The Paddle virtualenv installs the `bench` extra's pins: `paddlepaddle>=3.2,<3.3`.
+The Paddle virtualenv installs the `paddle` extra's pins
+(`paddleocr>=3.7,<4`, `paddlepaddle>=3.2,<3.3`); the corpus generator needs
+only the `corpus` extra (Pillow) in the project's own venv, and the Tesseract
+runner needs the system `tesseract-ocr` binary. The README's Install section
+lists all of it in one place.
 On 3.3.1 the PIR→oneDNN instruction converter fails on a `conv2d` attribute
 (`ConvertPirAttribute2RuntimeAttribute not support`), for every PP-OCR graph,
 with no flag or blocklist that avoids it — bisected to the op. `--no-mkldnn`

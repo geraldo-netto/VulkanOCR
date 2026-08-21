@@ -19,7 +19,7 @@ same PP-OCRv6 graphs on the GPU through ncnn, at the same accuracy:
 Same PP-OCRv6_medium models on both sides. The PaddleOCR column is
 `paddleocr 3.7.0` on `paddlepaddle 3.2.2` with oneDNN on — its best CPU
 configuration; on paddlepaddle 3.3 the PIR→oneDNN converter refuses every
-PP-OCR graph, which is why the `bench` extra pins `<3.3`. Every row is
+PP-OCR graph, which is why the `paddle` extra pins `<3.3`. Every row is
 produced by a committed runner and `benchmarks/compare_engines.py`, from one
 generation of the corpus.
 
@@ -51,7 +51,17 @@ About fourteen hundred lines of engine and as much again in tests — sizes
 that drift, so the claim is the shape, not a census. Dependencies are `ncnn`, `numpy` and
 `opencv` — no PaddlePaddle, no ONNX, no polygon clipper.
 
-## Run it
+## Install
+
+**Mandatory.** Python ≥ 3.11 and a working Vulkan driver for the GPU (on this
+host, Mesa's RADV; `vulkaninfo` should list the card). Without a hardware
+Vulkan device the engine refuses to run — there is deliberately no CPU
+fallback. Everything Python-side installs with the package itself:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .   # pulls ncnn, numpy, opencv-python-headless
+```
 
 The model graphs are third-party ports and are not vendored here; fetch them
 once (see [THIRD-PARTY.md](THIRD-PARTY.md)):
@@ -60,10 +70,20 @@ once (see [THIRD-PARTY.md](THIRD-PARTY.md)):
 git clone https://github.com/Avafly/PaddleOCR-ncnn-CPP   # PP-OCRv6, MIT
 git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, BSD-3
 # cloned elsewhere? point VULKANOCR_MODELS_ROOT at the directory holding both
+```
 
-python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
+**Optional**, by what you want to do:
 
+| you want to | install |
+| --- | --- |
+| run the tests, lint | `.venv/bin/python -m pip install -e '.[dev]'` (pytest, ruff) |
+| regenerate the corpus | `.venv/bin/python -m pip install -e '.[corpus]'` (Pillow, used by `benchmarks/make_corpus.py`) |
+| run the PaddleOCR comparison | the `paddle` extra — in a **separate** venv, never this one: `python3 -m venv ~/paddle-venv && ~/paddle-venv/bin/python -m pip install 'vulkanocr[paddle] @ file://'$PWD` ([docs/benchmarks.md](docs/benchmarks.md) says why, and why it pins paddlepaddle `<3.3`) |
+| run the Tesseract comparison | the system binary: `sudo apt install tesseract-ocr` (Debian/Ubuntu) |
+
+## Run it
+
+```sh
 .venv/bin/vulkanocr samples/sample-applet.png                # PP-OCRv6 medium
 .venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
 .venv/bin/python -m pytest -q                                # 74 tests; live ones skip without a GPU
