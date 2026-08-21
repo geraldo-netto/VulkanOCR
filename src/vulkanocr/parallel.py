@@ -221,6 +221,15 @@ class ParallelOcr:
                 # Reaped, not just killed: without this join the child stayed
                 # a zombie for the parent's whole life (VOCR-0046).
                 process.join(timeout=10)
+        for channel in self._requests.values():
+            # Unsent data to a dead reader is dropped, not awaited: a patch
+            # still in the queue buffer left the feeder thread blocked in
+            # Connection._send forever, and the interpreter's exit joined
+            # that feeder — the process never ended (VOCR-0047).
+            channel.close()
+            channel.cancel_join_thread()
+        self._replies.close()
+        self._replies.cancel_join_thread()
         self._primary.close()
 
     def __enter__(self) -> ParallelOcr:
