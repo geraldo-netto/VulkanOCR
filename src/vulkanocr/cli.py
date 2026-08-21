@@ -118,6 +118,11 @@ def _read_and_report(arguments, engine, rgb) -> int:
             f"  ({line.center_x:5.0f},{line.center_y:5.0f}) conf={line.confidence:.2f}  {line.text}"
         )
     print(f"\n{len(result.lines)} lines")
+    if result.undecoded_regions:
+        # Without this line a clean page and a page the recogniser gave up
+        # on printed identically — the exact invisibility the field's own
+        # docstring warns about (VOCR-0045).
+        print(f"{result.undecoded_regions} detected regions could not be decoded")
 
     print("\nGPU busy while reading (sysfs gpu_busy_percent):")
     for path, values in samples.items():
