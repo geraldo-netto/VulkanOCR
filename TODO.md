@@ -1,4 +1,16 @@
-# VulkanOCR review — 2026-08-21
+# TODO
 
-| id | severity | effort | description |
-| --- | --- | --- | --- |
+## Open
+
+| id | status | severity | effort | description |
+| --- | --- | --- | --- | --- |
+
+## Blocked / Deferred
+
+| id | status | severity | effort | description |
+| --- | --- | --- | --- | --- |
+
+## Rejected / Won't fix
+
+| id | status | severity | effort | description |
+| --- | --- | --- | --- | --- |
