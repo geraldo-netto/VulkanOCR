@@ -1,5 +1,7 @@
 """End-to-end on the real Vulkan device; skipped when hardware is absent."""
 
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -114,3 +116,29 @@ def test_the_gpu_pool_reads_exactly_what_one_gpu_reads(engine):
         pooled = [line.text for line in pool.read(rgb).lines]
 
     assert pooled == single
+
+
+def test_a_dead_gpu_worker_is_a_named_refusal_not_a_hang():
+    """VOCR-0035: `replies.get()` had no timeout and no liveness check, so a
+    worker killed by the OOM reaper turned every later read into an
+    indefinite hang. Killing one must end the read with `worker-died`."""
+    from vulkanocr.catalog import models_for
+    from vulkanocr.engine import OcrEngineError
+    from vulkanocr.parallel import ParallelOcr
+
+    pool = ParallelOcr(models_for("v6-tiny"))
+    if len(pool.device_names) < 2:
+        pool.close()
+        pytest.skip("one hardware device; the pool falls back to the single engine")
+    # A one-line render yields a single crop, and the pool deliberately
+    # falls back to the single engine below two — so the page must be real.
+    page = cv2.imread(str(pathlib.Path(__file__).parents[1] / "samples/sample-applet.png"))
+    rgb = np.ascontiguousarray(page[:, :, ::-1])
+    pool.read(rgb)
+
+    pool._workers[1].terminate()
+    pool._workers[1].join()
+
+    with pytest.raises(OcrEngineError, match="worker-died"):
+        pool.read(rgb)
+    pool.close()

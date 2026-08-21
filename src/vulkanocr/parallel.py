@@ -29,6 +29,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import time
 from collections import deque
+from queue import Empty
 from typing import Any
 
 import numpy as np
@@ -74,6 +75,7 @@ class ParallelOcr:
 
             raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
         devices = hardware_devices(ncnn)
+        self._devices = devices
         # Detection and single-device fallback stay in this process.
         self._primary = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=devices[0])
         self._context = mp.get_context("spawn")
@@ -93,10 +95,32 @@ class ParallelOcr:
             self._requests[device.index] = channel
             self._workers.append(process)
         for _ in devices:
-            kind, index, name, seed = self._replies.get()
+            kind, index, name, seed = self._answer()
             assert kind == "ready"
             self._names[index] = name
             self._cost[index] = seed
+
+    def _answer(self):
+        """The next worker reply, or a refusal naming the worker that died.
+
+        A bare `Queue.get()` here blocked forever when a worker was killed —
+        by the OOM reaper, a driver reset, or a person — turning every later
+        read into a hang. The wait now polls, and between polls checks that
+        every process is still alive; a dead one is an error with a name, not
+        an eternity.
+        """
+        from .engine import OcrEngineError  # noqa: PLC0415 - avoids a cycle at import
+
+        while True:
+            try:
+                return self._replies.get(timeout=0.5)
+            except Empty:
+                for process, device in zip(self._workers, self._devices, strict=True):
+                    if not process.is_alive():
+                        raise OcrEngineError(
+                            "worker-died",
+                            f"the GPU worker for {device.name} exited with code {process.exitcode}",
+                        ) from None
 
     @property
     def device_names(self) -> tuple[str, ...]:
@@ -146,7 +170,7 @@ class ParallelOcr:
 
         assign()
         while outstanding:
-            kind, index, crop_index, answer = self._replies.get()
+            kind, index, crop_index, answer = self._answer()
             assert kind == "done"
             outstanding -= 1
             busy.discard(index)
@@ -158,9 +182,13 @@ class ParallelOcr:
 
     def close(self) -> None:
         for channel in self._requests.values():
+            # A dead worker's queue still accepts the sentinel; nothing to
+            # guard beyond not caring whether anybody reads it.
             channel.put(None)
         for process in self._workers:
             process.join(timeout=10)
+            if process.is_alive():
+                process.terminate()
         self._primary.close()
 
     def __enter__(self) -> ParallelOcr:
