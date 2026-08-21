@@ -108,9 +108,13 @@ serialise. Process-per-device fixed the parallelism; the scheduler then had
 to price work, because on a 7.5x-asymmetric pair a slow card that *takes* a
 crop the fast card would finish sooner hurts the page. The dispatcher grants
 a slow device a cheap crop only while its cumulative commitment stays under
-the fast side's projected work. Result on RX 6600 XT + Radeon 610M:
-**639 → 573 ms (1.12x), text identical**; on near-equal devices the same
-policy splits the page and approaches 2x.
+the fast side's projected work; prices are seeded by a start-up probe strip
+and refined by every finished crop, so an unrepresentative probe cannot
+mis-price the pool for its whole life. Result on RX 6600 XT + Radeon 610M:
+**639 → 573 ms (1.12x), text identical** (re-runs land between 1.07x and
+1.12x); on near-equal devices the same policy splits the page and approaches
+2x. On a machine with one hardware device the pool builds no worker fleet at
+all — it is the single engine, same answers, nothing spawned.
 
 ## Batching: measured, negative
 

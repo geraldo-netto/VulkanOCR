@@ -14,9 +14,9 @@ reader can see exactly what is borrowed and from whom.
 
 The two model repositories are **not** vendored here: they are clones of
 somebody else's work, and republishing them under this name would misrepresent
-authorship and duplicate their history. [`docs/benchmarks.md`](docs/benchmarks.md) and the README's setup
-section say where to fetch them; the weights are large binaries that belong with their
-publishers, not in this history.
+authorship and duplicate their history. The README's setup section says where
+to fetch them (and `VULKANOCR_MODELS_ROOT` names where they live); the weights
+are large binaries that belong with their publishers, not in this history.
 
 The detection geometry in `src/vulkanocr/detection.py` follows nihui's
 `ppocrv5.cpp` with one deliberate divergence, recorded in the code: the flat

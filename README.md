@@ -42,13 +42,13 @@ src/vulkanocr/      the engine, installed as the `vulkanocr` package
   parallel.py       one engine process per GPU; a slow card can help, never hurt
   proof.py          sysfs gpu_busy_percent sampling, as a context manager
 tests/              the suite; the live tests skip without a GPU
-benchmarks/         corpus, scorer, one runner per engine, the batching PoCs
+benchmarks/         corpus, scorer, shared measurement loop, one runner per engine, the batching PoCs
 docs/               benchmarks, engine notes, and the findings of the first pass
 samples/            the images the README and tests quote
 ```
 
-Under a thousand lines of engine, six hundred of tests — sizes that drift,
-so the claim is the shape, not a census. Dependencies are `ncnn`, `numpy` and
+About fourteen hundred lines of engine and as much again in tests — sizes
+that drift, so the claim is the shape, not a census. Dependencies are `ncnn`, `numpy` and
 `opencv` — no PaddlePaddle, no ONNX, no polygon clipper.
 
 ## Run it
@@ -59,13 +59,14 @@ once (see [THIRD-PARTY.md](THIRD-PARTY.md)):
 ```sh
 git clone https://github.com/Avafly/PaddleOCR-ncnn-CPP   # PP-OCRv6, MIT
 git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, BSD-3
+# cloned elsewhere? point VULKANOCR_MODELS_ROOT at the directory holding both
 
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
 
 .venv/bin/vulkanocr samples/sample-applet.png                # PP-OCRv6 medium
 .venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
-.venv/bin/python -m pytest -q                                # 21 tests
+.venv/bin/python -m pytest -q                                # 74 tests; live ones skip without a GPU
 ```
 
 The command prints the device it chose, the lines with their coordinates and

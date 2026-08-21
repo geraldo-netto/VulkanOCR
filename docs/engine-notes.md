@@ -16,26 +16,33 @@ src/vulkanocr/
   engine.py       facade: load once, read(rgb) -> OcrResult
   catalog.py      known model sets as data; default is PP-OCRv6 medium
   cli.py          the `vulkanocr` command
+  parallel.py     one recognition process per GPU, work priced per assignment
   proof.py        sysfs gpu_busy_percent sampling, as a context manager
-tests/            21 tests: device policy (fake runtime), CTC vectors,
-                  catalogue facts, live GPU
+tests/            74 tests: device policy and engine lifecycle (fake runtime),
+                  CTC vectors, detection geometry, catalogue facts, the
+                  assembler, the pool's dispatcher and refusals (GPU-free),
+                  the scorer and measurement loop, the busy sampler, live GPU
 ```
 
 The default model set is **`v6-medium`**. Override per run with
 `--models v6-tiny|v6-small|v5-mobile`.
 
 Dependencies: `ncnn`, `numpy`, `opencv`. No paddle, no omnitensor imports,
-no upstream modification. Models come from two third-party ncnn ports of PaddlePaddle's Apache-2.0
-weights: Avafly (MIT) for PP-OCRv6, nihui (BSD-3) for PP-OCRv5. Neither
-upstream is modified.
-fp16 packed/storage/arithmetic disabled, matching the service's Vulkan policy.
+no upstream modification. Models come from two third-party ncnn ports of
+PaddlePaddle's Apache-2.0 weights: Avafly (MIT) for PP-OCRv6, nihui (BSD-3)
+for PP-OCRv5. Neither upstream is modified.
+
+By default fp16 packed/storage/arithmetic are all disabled, matching the
+service's Vulkan policy; a `use_fp16` constructor knob (and `--fp16` on the
+corpus runner) exists for measurement, where it bought 1.5x on recognition at
+no measured accuracy cost (`docs/benchmarks.md`).
 
 ## Run
 
 ```sh
 .venv/bin/vulkanocr samples/sample-applet.png                 # v6 medium
 .venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
-.venv/bin/python -m pytest -q                                 # 21 passed
+.venv/bin/python -m pytest -q                                 # 74 passed here
 ```
 
 ## Evidence (2026-08-15, this host)
@@ -68,6 +75,31 @@ real integration:
 - If throughput matters, the knobs are: server models (GPU-favoured),
   batching crops per extractor, and reusing one extractor per page. Not a
   blocker for the provider work.
+
+## The multi-GPU pool (`parallel.py`)
+
+`--all-gpus` reads one page with every hardware device. The design facts,
+each measured rather than assumed (numbers in `docs/benchmarks.md`):
+
+- One **process** per device: the ncnn binding holds the GIL through
+  `extract`, so a thread pool ran 4x *slower* than one GPU.
+- Detection runs once, in-process, on the preferred device; workers build
+  recognition-only engines (`nets=("rec",)`), so no worker holds a detection
+  net it never runs.
+- The dispatcher **prices** every assignment in ms per pixel column — seeded
+  by a probe strip at start-up, refined by every finished crop — and grants a
+  slow device a cheap tail crop only while its cumulative commitment stays
+  under the fast side's projected work. Near-equal devices split the page;
+  a 7.5x-slower card contributes a little and cannot hurt.
+- Every request and reply carries its read's generation, so a read that
+  raised cannot leak stale results into the next page; a dead or failing
+  worker is retired with a named refusal (`worker-died`/`worker-failed`) and
+  the survivors carry the next read, down to the primary-engine fallback.
+- On a machine with one hardware device the pool builds no fleet at all: it
+  is the primary engine, with the same answers.
+
+Correctness is device-count-independent: lines return in `OcrEngine.read`'s
+order, and the live suite asserts the pool's text equals the single engine's.
 
 ## Model generations available here
 
