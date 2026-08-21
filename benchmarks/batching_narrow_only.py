@@ -33,7 +33,11 @@ def read_packed(engine, crops):
 def main() -> int:
     image = sys.argv[1]
     rgb = load_rgb(image)
-    engine = OcrEngine(models_for("v6-medium"))
+    with OcrEngine(models_for("v6-medium")) as engine:
+        return _measure(engine, rgb)
+
+
+def _measure(engine, rgb) -> int:
     crops = [patch for _region, patch in engine.crops(rgb)]
     base = [read_one(engine, c) for c in crops]
 

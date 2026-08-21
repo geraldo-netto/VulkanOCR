@@ -39,7 +39,11 @@ def single_texts(engine, crops):
 def main() -> int:
     image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
     rgb = load_rgb(image)
-    engine = OcrEngine(models_for(model_set))
+    with OcrEngine(models_for(model_set)) as engine:
+        return _measure(engine, rgb, model_set)
+
+
+def _measure(engine, rgb, model_set) -> int:
     crops = [patch for _region, patch in engine.crops(rgb)]
     widths = [crop.shape[1] for crop in crops]
     print(f"{model_set}: {len(crops)} crops, widths {min(widths)}..{max(widths)}")

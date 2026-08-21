@@ -37,10 +37,13 @@ def render(text: str) -> np.ndarray:
 
 
 @pytest.fixture(scope="module")
-def engine() -> OcrEngine:
+def engine():
     if not HARDWARE:
         pytest.skip("no hardware Vulkan device")
-    return OcrEngine(models())
+    # Closed like everything else that holds an engine (VOCR-0059): the
+    # fixture must not be the one builder exempt from the repo's own rule.
+    with OcrEngine(models()) as built:
+        yield built
 
 
 @needs_gpu
