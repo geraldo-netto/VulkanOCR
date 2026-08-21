@@ -40,6 +40,7 @@ src/vulkanocr/      the engine, installed as the `vulkanocr` package
   catalog.py        model sets as data: PP-OCRv6 tiny/small/medium, PP-OCRv5 mobile
   cli.py            the `vulkanocr` command (`--all-gpus` pools every device)
   parallel.py       one engine process per GPU; a slow card can help, never hurt
+  proof.py          sysfs gpu_busy_percent sampling, as a context manager
 tests/              the suite; the live tests skip without a GPU
 benchmarks/         corpus, scorer, one runner per engine, the batching PoCs
 docs/               benchmarks, engine notes, and the findings of the first pass
