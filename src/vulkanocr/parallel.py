@@ -70,8 +70,8 @@ def _worker(device_index: int, models: OcrModels, use_fp16: bool, requests, repl
             message = requests.get()
             if message is None:
                 return
-            index, patch = message
-            replies.put(("done", device_index, index, engine.recognise(patch)))
+            generation, index, patch = message
+            replies.put(("done", device_index, generation, index, engine.recognise(patch)))
     except BaseException as error:  # noqa: BLE001 - the reply is the report
         replies.put(("error", device_index, repr(error)))
         raise
@@ -99,6 +99,7 @@ class ParallelOcr:
         self._names: dict[int, str] = {}
         self._cost: dict[int, float] = {}
         self._workers = []
+        self._generation = 0
         for device in devices:
             channel = self._context.Queue()
             process = self._context.Process(
@@ -132,6 +133,7 @@ class ParallelOcr:
             except Empty:
                 for process, device in zip(self._workers, self._devices, strict=True):
                     if not process.is_alive():
+                        self._retire(device.index)
                         raise OcrEngineError(
                             "worker-died",
                             f"the GPU worker for {device.name} exited with code {process.exitcode}",
@@ -140,10 +142,39 @@ class ParallelOcr:
             if message[0] == "error":
                 _kind, index, detail = message
                 device = next(d for d in self._devices if d.index == index)
+                self._retire(index)
                 raise OcrEngineError(
                     "worker-failed", f"the GPU worker for {device.name} raised {detail}"
                 )
             return message
+
+    def _retire(self, index: int) -> None:
+        """Take a dead or failing worker out of dispatch, for good.
+
+        Left in `_cost`/`_requests`, it kept being assigned crops that
+        nobody would ever answer, so every later read refused too
+        (VOCR-0036). Retired, the survivors carry the next read — and with
+        one device left, `read` falls back to the primary engine.
+        """
+        self._names.pop(index, None)
+        self._cost.pop(index, None)
+        channel = self._requests.pop(index, None)
+        if channel is not None:
+            channel.close()
+            channel.cancel_join_thread()
+        kept = [
+            (process, device)
+            for process, device in zip(self._workers, self._devices, strict=True)
+            if device.index != index
+        ]
+        retired = [p for p, d in zip(self._workers, self._devices, strict=True) if d.index == index]
+        self._workers = [process for process, _device in kept]
+        self._devices = [device for _process, device in kept]
+        for process in retired:
+            process.join(timeout=10)
+            if process.is_alive():
+                process.terminate()
+                process.join(timeout=10)
 
     @property
     def device_names(self) -> tuple[str, ...]:
@@ -157,6 +188,13 @@ class ParallelOcr:
 
     def read(self, rgb: np.ndarray) -> OcrResult:
         """Recognise every text line, crops shared across all devices."""
+        # Every message carries the read it belongs to: a read that raised
+        # mid-page — a worker refusal, a Ctrl-C — left workers finishing
+        # crops whose "done" replies nobody consumed, and the next read
+        # took them first, pairing the previous page's crop_index with the
+        # new page's regions (VOCR-0036). Stale generations are drained.
+        self._generation += 1
+        generation = self._generation
         pairs = self._primary.crops(rgb)
         if len(self._names) == 1 or len(pairs) < 2:
             # The crops in hand are the read: `self._primary.read(rgb)` here
@@ -167,6 +205,10 @@ class ParallelOcr:
                 ((region, self._primary.recognise(patch)) for region, patch in pairs),
             )
 
+        return assemble_result(" + ".join(self.device_names), self._dispatch(generation, pairs))
+
+    def _dispatch(self, generation: int, pairs: list[tuple]) -> list:
+        """Price and farm the crops out, and collect this read's replies."""
         work = deque(sorted(enumerate(pairs), key=lambda item: -item[1][1].shape[1]))
         results: list = [None] * len(pairs)
         committed = dict.fromkeys(self._cost, 0.0)
@@ -193,21 +235,24 @@ class ParallelOcr:
                     side = work.pop
                 side()
                 committed[index] += price * patch.shape[1]
-                self._requests[index].put((crop_index, patch))
+                self._requests[index].put((generation, crop_index, patch))
                 busy.add(index)
                 outstanding += 1
 
         assign()
         while outstanding:
-            kind, index, crop_index, answer = self._answer()
+            kind, index, reply_generation, crop_index, answer = self._answer()
             assert kind == "done"
+            if reply_generation != generation:
+                # A leftover from a read that raised; its page is gone.
+                continue
             outstanding -= 1
             busy.discard(index)
             region, _patch = pairs[crop_index]
             results[crop_index] = (region, answer)
             assign()
 
-        return assemble_result(" + ".join(self.device_names), results)
+        return results
 
     def close(self) -> None:
         for channel in self._requests.values():
