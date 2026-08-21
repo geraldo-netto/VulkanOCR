@@ -21,15 +21,17 @@ def main() -> int:
     for path in files:
         doc = json.loads(path.read_text(encoding="utf-8"))
         rows = doc["rows"]
+        if not rows:
+            # An empty result document is a run that produced nothing; naming
+            # it beats dividing by zero in the middle of the table. Checked
+            # before any arithmetic — it used to sit after the divisions it
+            # guarded, where it could only ever be dead code (VOCR-0054).
+            print(f"{doc['engine']:34} (no rows)")
+            continue
         cer = sum(r["char_distance"] for r in rows) / sum(r["char_length"] for r in rows)
         wer = sum(r["word_distance"] for r in rows) / sum(r["word_length"] for r in rows)
         exact = sum(1 for r in rows if r["exact"]) / len(rows)
         times = sorted(r["ms"] for r in rows)
-        if not rows:
-            # An empty result document is a run that produced nothing; naming
-            # it beats dividing by zero in the middle of the table.
-            print(f"{doc['engine']:34} (no rows)")
-            continue
         p50 = statistics.median(times)
         # The nearest-rank definition: ceil(0.95 * n) as a 1-based rank. The
         # previous expression was one rank low — int(55 * 0.95) - 1 indexed
