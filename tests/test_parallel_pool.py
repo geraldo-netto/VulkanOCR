@@ -231,3 +231,65 @@ def test_a_failed_start_closes_the_primary_and_every_started_worker(monkeypatch)
     assert [engine.closed for engine in engines] == [True]
     assert len(started) == 2
     assert all(not process.is_alive() for process in started)
+
+
+def _priced_read(costs: dict[int, float], replies: Queue):
+    import numpy as np
+
+    from vulkanocr.detection import TextRegion
+
+    region = TextRegion(
+        center_x=10.0,
+        center_y=10.0,
+        width=10.0,
+        height=90.0,
+        angle=90.0,
+        vertical=False,
+        score=0.9,
+    )
+    pairs = [
+        (region, np.zeros((48, 300, 3), dtype=np.uint8)),
+        (region, np.zeros((48, 200, 3), dtype=np.uint8)),
+        (region, np.zeros((48, 100, 3), dtype=np.uint8)),
+    ]
+    pool = _pool(
+        replies=replies,
+        devices=[SimpleNamespace(index=0, name="Fast GPU"), SimpleNamespace(index=1, name="iGPU")],
+        workers=[_Worker(alive=True), _Worker(alive=True)],
+    )
+    pool._cost = dict(costs)
+    pool._primary = SimpleNamespace(crops=lambda _rgb: pairs, device_name="Fast GPU")
+    pool.read(np.zeros((100, 100, 3), dtype=np.uint8))
+    return pool
+
+
+def test_a_slow_device_is_refused_work_the_fast_one_finishes_sooner():
+    """The commitment guard, priced without a GPU in sight (VOCR-0043).
+
+    At 10x the fast device's price, even the cheapest tail crop costs more
+    than the fast device needs for everything still queued — so the slow
+    device is given nothing and the page is read where it finishes first.
+    """
+
+    replies = Queue()
+    replies.put(("done", 0, 1, 0, ("first", 0.9), 300.0))
+    replies.put(("done", 0, 1, 1, ("second", 0.9), 200.0))
+    replies.put(("done", 0, 1, 2, ("third", 0.9), 100.0))
+    pool = _priced_read({0: 1.0, 1: 10.0}, replies)
+
+    sent = {index: [m[1] for m in channel.sent] for index, channel in pool._requests.items()}
+    # Largest first to the fast device; the slow one never fits the guard.
+    assert sent == {0: [0, 1, 2], 1: []}
+
+
+def test_near_equal_devices_split_the_page():
+    replies = Queue()
+    replies.put(("done", 0, 1, 0, ("first", 0.9), 300.0))
+    replies.put(("done", 1, 1, 1, ("second", 0.9), 240.0))
+    replies.put(("done", 0, 1, 2, ("third", 0.9), 100.0))
+    pool = _priced_read({0: 1.0, 1: 1.2}, replies)
+
+    sent = {index: [m[1] for m in channel.sent] for index, channel in pool._requests.items()}
+    # Both are fast (within 1.5x), so they take from the expensive end in
+    # price order: the biggest crop to the cheaper device.
+    assert sent == {0: [0, 2], 1: [1]}
