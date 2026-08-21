@@ -20,14 +20,13 @@ import json
 import os
 import pathlib
 import sys
-import time
 import warnings
 
 warnings.filterwarnings("ignore")
 os.environ.setdefault("FLAGS_call_stack_level", "0")
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from corpusrun import run_corpus
 from paddleocr import PaddleOCR
-from scoring import score
 
 
 def main() -> int:
@@ -50,7 +49,7 @@ def main() -> int:
         f"paddle-{paddle.__version__}/{models}/onednn-{'on' if mkldnn else 'off'}"
     )
 
-    def read(path):
+    def read(path) -> str:
         result = ocr.predict(str(path))
         texts = []
         for page in result:
@@ -58,32 +57,13 @@ def main() -> int:
             texts.extend(data.get("rec_texts", []))
         return " ".join(texts)
 
-    read(corpus / cases[0]["image"])
-    rows = []
-    for case in cases:
-        start = time.perf_counter()
-        observed = read(corpus / case["image"])
-        elapsed = (time.perf_counter() - start) * 1000
-        row = {
-            "id": case["id"],
-            "variant": case["variant"],
-            "ms": elapsed,
-            "observed": observed,
-            **score(" ".join(case["lines"]), observed),
-        }
-        rows.append(row)
-        print(
-            f"{case['id']:34} cer={row['cer']:.3f} wer={row['wer']:.3f} {elapsed:7.1f} ms",
-            flush=True,
-        )
-    out = corpus.parent / f"results-paddleocr-onednn-{'on' if mkldnn else 'off'}.json"
-    out.write_text(
-        json.dumps(
-            {"engine": tag, "device": "CPU", "rows": rows},
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
+    run_corpus(
+        corpus,
+        cases,
+        read,
+        tag=tag,
+        device="CPU",
+        out=corpus.parent / f"results-paddleocr-onednn-{'on' if mkldnn else 'off'}.json",
     )
     return 0
 

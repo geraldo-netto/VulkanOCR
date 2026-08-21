@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
-import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
-from scoring import load_rgb, score
+from corpusrun import run_corpus
+from scoring import load_rgb
 
 from vulkanocr.catalog import models_for
 from vulkanocr.engine import OcrEngine
@@ -22,47 +22,23 @@ def main() -> int:
     fp16 = "--fp16" in sys.argv[3:]
     cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
 
-    engine = OcrEngine(models_for(model_set), use_fp16=fp16)
-    rows = []
-    # One warm pass first: the first read pays for shader compilation, and a
-    # comparison of steady-state speed must not charge it to one engine only.
-    engine.read(load_rgb(corpus / cases[0]["image"]))
+    with OcrEngine(models_for(model_set), use_fp16=fp16) as engine:
 
-    for case in cases:
-        rgb = load_rgb(corpus / case["image"])
-        start = time.perf_counter()
-        result = engine.read(rgb)
-        elapsed = (time.perf_counter() - start) * 1000
-        # read() already sorts by (center_y, center_x); sorting again here
-        # implied the engine's order could not be trusted.
-        observed = " ".join(line.text for line in result.lines)
-        row = {
-            "id": case["id"],
-            "variant": case["variant"],
-            "ms": elapsed,
-            "observed": observed,
-            **score(" ".join(case["lines"]), observed),
-        }
-        rows.append(row)
-        print(
-            f"{case['id']:34} cer={row['cer']:.3f} wer={row['wer']:.3f} {elapsed:7.1f} ms",
-            flush=True,
+        def read(path) -> str:
+            # read() already sorts by (center_y, center_x); sorting again here
+            # implied the engine\'s order could not be trusted.
+            return " ".join(line.text for line in engine.read(load_rgb(path)).lines)
+
+        suffix = "-fp16" if fp16 else ""
+        run_corpus(
+            corpus,
+            cases,
+            read,
+            tag=f"vulkanocr/{model_set}{'+fp16' if fp16 else ''}",
+            device=engine.device_name,
+            out=corpus.parent / f"results-vulkanocr-{model_set}{suffix}.json",
         )
-
-    out = corpus.parent / f"results-vulkanocr-{model_set}{'-fp16' if fp16 else ''}.json"
-    out.write_text(
-        json.dumps(
-            {
-                "engine": f"vulkanocr/{model_set}{'+fp16' if fp16 else ''}",
-                "device": engine.device_name,
-                "rows": rows,
-            },
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
-    print("device:", engine.device_name)
+        print("device:", engine.device_name)
     return 0
 
 
