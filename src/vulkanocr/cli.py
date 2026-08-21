@@ -80,6 +80,11 @@ def main() -> int:
         engine = _reader(arguments)
     except (OcrEngineError, HardwareVulkanUnavailableError) as error:
         raise SystemExit(str(error)) from error
+    with engine:
+        return _read_and_report(arguments, engine, rgb)
+
+
+def _read_and_report(arguments, engine, rgb) -> int:
     print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")
     print(f"device: {engine.device_name}")
 
