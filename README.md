@@ -38,8 +38,9 @@ src/vulkanocr/      the engine, installed as the `vulkanocr` package
   recognition.py    affine crop -> CTC head -> greedy decode
   engine.py         facade: load once, read(rgb) -> OcrResult
   catalog.py        model sets as data: PP-OCRv6 tiny/small/medium, PP-OCRv5 mobile
-  cli.py            the `vulkanocr` command
-tests/              21 tests; the live ones skip without a GPU
+  cli.py            the `vulkanocr` command (`--all-gpus` pools every device)
+  parallel.py       one engine process per GPU; a slow card can help, never hurt
+tests/              the suite; the live tests skip without a GPU
 benchmarks/         corpus, scorer, one runner per engine, the batching PoCs
 docs/               benchmarks, engine notes, and the findings of the first pass
 samples/            the images the README and tests quote

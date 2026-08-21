@@ -138,6 +138,7 @@ class OcrEngine:
         target_size: int = DEFAULT_TARGET_SIZE,
         use_vulkan: bool = True,
         use_fp16: bool = False,
+        device: Any = None,
     ):
         """`runtime` is the ncnn module, or anything shaped like it.
 
@@ -159,7 +160,9 @@ class OcrEngine:
         # dropped the load-return checks and the device pinning on the way.
         self._use_vulkan = bool(use_vulkan)
         self._use_fp16 = bool(use_fp16)
-        self._device = select_hardware_device(runtime)
+        # A caller may pin a specific device — the parallel engine builds one
+        # engine per card — otherwise the most capable one is selected.
+        self._device = device if device is not None else select_hardware_device(runtime)
         self._characters = self._load_dictionary(models.dictionary)
         self._det = None
         self._rec = None

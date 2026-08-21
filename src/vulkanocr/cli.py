@@ -36,6 +36,15 @@ def sample_gpu_busy(stop: threading.Event, samples: dict[Path, list[int]]) -> No
         time.sleep(0.02)
 
 
+def _reader(arguments):
+    """The engine the flags ask for: one device, or one process per device."""
+    if arguments.all_gpus:
+        from .parallel import ParallelOcr  # noqa: PLC0415 - spawns worker processes
+
+        return ParallelOcr(models_for(arguments.models))
+    return OcrEngine(models_for(arguments.models))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
@@ -44,6 +53,11 @@ def main() -> int:
         type=int,
         default=0,
         help="extra timed passes for benchmarking (default: none — one read answers)",
+    )
+    parser.add_argument(
+        "--all-gpus",
+        action="store_true",
+        help="recognise crops on every hardware Vulkan device, not just the best one",
     )
     parser.add_argument(
         "--models",
@@ -63,7 +77,7 @@ def main() -> int:
     # Vulkan device are all states with a next step, and a traceback buries
     # the sentence that names it.
     try:
-        engine = OcrEngine(models_for(arguments.models))
+        engine = _reader(arguments)
     except (OcrEngineError, HardwareVulkanUnavailableError) as error:
         raise SystemExit(str(error)) from error
     print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")

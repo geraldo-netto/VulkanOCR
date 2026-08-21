@@ -99,6 +99,19 @@ model is near-tied on that crop (0.977 vs 0.970 confidence), and any kernel
 that flips it flips more elsewhere. The fused bilinear crop stays; fixing one
 image at the corpus's expense would be tuning the benchmark, not the engine.
 
+## Multi-GPU: measured, positive — after two measured failures
+
+`benchmarks/multi_gpu.py`. A thread pool over both of this desk's GPUs ran
+**4x slower** than one: the ncnn binding holds the GIL through `extract`
+(a Python spin stalls the full 225 ms of an iGPU extract), so threads
+serialise. Process-per-device fixed the parallelism; the scheduler then had
+to price work, because on a 7.5x-asymmetric pair a slow card that *takes* a
+crop the fast card would finish sooner hurts the page. The dispatcher grants
+a slow device a cheap crop only while its cumulative commitment stays under
+the fast side's projected work. Result on RX 6600 XT + Radeon 610M:
+**639 → 573 ms (1.12x), text identical**; on near-equal devices the same
+policy splits the page and approaches 2x.
+
 ## Batching: measured, negative
 
 Three attempts, all in [`benchmarks/`](../benchmarks): concurrent extractors

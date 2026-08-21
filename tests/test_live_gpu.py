@@ -99,3 +99,18 @@ def test_the_30_to_60_degree_band_reads_text_instead_of_noise(engine):
         text = " ".join(line.text for line in engine.read(rgb).lines)
 
         assert "1234" in text, (degrees, text)
+
+
+def test_the_gpu_pool_reads_exactly_what_one_gpu_reads(engine):
+    """Device count must never change the answer (VOCR-0034). On a machine
+    with one hardware device the pool falls back to the single engine, so
+    this holds everywhere it runs."""
+    from vulkanocr.parallel import ParallelOcr
+
+    rgb = np.ascontiguousarray(render("Vulkan pool 1234")[:, :, ::-1])
+    single = [line.text for line in engine.read(rgb).lines]
+
+    with ParallelOcr(models()) as pool:
+        pooled = [line.text for line in pool.read(rgb).lines]
+
+    assert pooled == single

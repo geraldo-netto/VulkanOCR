@@ -25,11 +25,13 @@ class VulkanDevice:
     kind: int
 
 
-def select_hardware_device(runtime) -> VulkanDevice:
-    """The most capable hardware Vulkan device, or a refusal.
+def hardware_devices(runtime) -> tuple[VulkanDevice, ...]:
+    """Every hardware Vulkan device, most capable first, or a refusal.
 
-    ``runtime`` is the imported ``ncnn`` module; it is injected so tests can
-    substitute a fake without a GPU or the wheel.
+    The single-device selection below is its first element; the parallel
+    engine takes the whole tuple. Software rasterisers are excluded the same
+    way in both — a second "device" that is llvmpipe would be a CPU lane in
+    costume.
     """
     candidates: list[tuple[int, int, VulkanDevice]] = []
     for index in range(runtime.get_gpu_count()):
@@ -44,4 +46,13 @@ def select_hardware_device(runtime) -> VulkanDevice:
             "no hardware Vulkan device is present; refusing the software rasteriser"
         )
     candidates.sort(key=lambda item: (item[0], item[1]))
-    return candidates[0][2]
+    return tuple(device for _rank, _index, device in candidates)
+
+
+def select_hardware_device(runtime) -> VulkanDevice:
+    """The most capable hardware Vulkan device, or a refusal.
+
+    ``runtime`` is the imported ``ncnn`` module; it is injected so tests can
+    substitute a fake without a GPU or the wheel.
+    """
+    return hardware_devices(runtime)[0]

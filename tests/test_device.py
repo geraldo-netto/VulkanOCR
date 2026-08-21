@@ -135,3 +135,22 @@ class TestTheEngineReleasesWhatItHolds:
             OcrEngine(models, runtime=runtime)
 
         assert [net.cleared >= 1 for net in built] == [True] * len(built)
+
+
+class TestHardwareDeviceEnumeration:
+    """The parallel engine takes every hardware device, best first (VOCR-0034)."""
+
+    def test_all_hardware_devices_come_back_ranked(self):
+        from vulkanocr.device import hardware_devices
+
+        runtime = FakeRuntime([FakeInfo("llvmpipe", 3), FakeInfo("iGPU", 1), FakeInfo("dGPU", 0)])
+        devices = hardware_devices(runtime)
+
+        assert [d.name for d in devices] == ["dGPU", "iGPU"]
+        assert devices[0].index == 2  # ranked by capability, not enumeration order
+
+    def test_the_software_rasteriser_never_joins_the_pool(self):
+        from vulkanocr.device import hardware_devices
+
+        with pytest.raises(HardwareVulkanUnavailableError):
+            hardware_devices(FakeRuntime([FakeInfo("llvmpipe", 3)]))
