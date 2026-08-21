@@ -195,7 +195,7 @@ class OcrEngine:
         return self._device.name
 
     def close(self) -> None:
-        """Release both nets and their Vulkan allocations.
+        """Release every loaded net and its Vulkan allocations.
 
         An engine holds on the order of 700 MiB of VRAM (measured in
         docs/benchmarks.md), and nothing freed it before: a benchmark that
