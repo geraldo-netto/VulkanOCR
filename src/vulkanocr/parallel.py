@@ -136,7 +136,13 @@ class ParallelOcr:
         """Recognise every text line, crops shared across all devices."""
         pairs = self._primary.crops(rgb)
         if len(self._names) == 1 or len(pairs) < 2:
-            return self._primary.read(rgb)
+            # The crops in hand are the read: `self._primary.read(rgb)` here
+            # ran detection a second time from scratch, so a one-GPU machine
+            # paid it twice on every --all-gpus read (VOCR-0040).
+            return assemble_result(
+                self._primary.device_name,
+                ((region, self._primary.recognise(patch)) for region, patch in pairs),
+            )
 
         work = deque(sorted(enumerate(pairs), key=lambda item: -item[1][1].shape[1]))
         results: list = [None] * len(pairs)
