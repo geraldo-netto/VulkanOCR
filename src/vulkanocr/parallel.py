@@ -93,17 +93,26 @@ class ParallelOcr:
         except ImportError as error:  # pragma: no cover - environment boundary
             raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
         devices = hardware_devices(ncnn)
-        self._devices = devices
+        self._devices: list = []
         # Detection and single-device fallback stay in this process.
         self._primary = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=devices[0])
-        self._context = mp.get_context("spawn")
-        self._replies = self._context.Queue()
         self._requests: dict[int, Any] = {}
         self._names: dict[int, str] = {}
         self._cost: dict[int, float] = {}
-        self._workers = []
+        self._workers: list = []
+        self._replies = None
         self._generation = 0
         self._closed = False
+        if len(devices) == 1:
+            # One device is the primary engine's own case: `read` always took
+            # the fallback here, yet a worker was spawned anyway and held a
+            # second recognition engine's Vulkan allocations for the pool's
+            # whole life without ever being asked for a crop (VOCR-0050).
+            self._names = {devices[0].index: devices[0].name}
+            return
+        self._devices = list(devices)
+        self._context = mp.get_context("spawn")
+        self._replies = self._context.Queue()
         try:
             for device in devices:
                 channel = self._context.Queue()
@@ -310,8 +319,9 @@ class ParallelOcr:
             # that feeder — the process never ended (VOCR-0047).
             channel.close()
             channel.cancel_join_thread()
-        self._replies.close()
-        self._replies.cancel_join_thread()
+        if self._replies is not None:
+            self._replies.close()
+            self._replies.cancel_join_thread()
         self._primary.close()
 
     def __enter__(self) -> ParallelOcr:

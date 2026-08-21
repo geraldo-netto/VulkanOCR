@@ -343,3 +343,66 @@ def test_a_pool_with_every_worker_retired_still_reads_on_the_primary():
 
     assert result.device_name == "Fast GPU"
     assert [line.text for line in result.lines] == ["text", "text", "text"]
+
+
+def test_one_device_builds_no_worker_fleet(monkeypatch):
+    """The pool on a single GPU is the primary engine, full stop (VOCR-0050).
+
+    read always took the fallback here, yet a worker process was spawned
+    anyway and held a second recognition engine's Vulkan allocations for
+    the pool's whole life without ever being asked for a crop.
+    """
+
+    import numpy as np
+
+    from vulkanocr import parallel
+    from vulkanocr.detection import TextRegion
+
+    class FakeEngine:
+        device_name = "Only GPU"
+
+        def __init__(self, *_args, **_kwargs):
+            self.closed = False
+
+        def crops(self, _rgb):
+            region = TextRegion(
+                center_x=10.0,
+                center_y=10.0,
+                width=10.0,
+                height=90.0,
+                angle=90.0,
+                vertical=False,
+                score=0.9,
+            )
+            return [(region, np.zeros((48, 100, 3), dtype=np.uint8))] * 2
+
+        def recognise(self, _patch):
+            return ("alone", 0.9)
+
+        def close(self):
+            self.closed = True
+
+    started = []
+
+    class FailingContext:
+        def Queue(self):  # noqa: N802 - multiprocessing's own name
+            raise AssertionError("a single-device pool must not build queues")
+
+        def Process(self, **_kwargs):  # noqa: N802
+            started.append(1)
+            raise AssertionError("a single-device pool must not spawn workers")
+
+    monkeypatch.setattr(parallel, "OcrEngine", FakeEngine)
+    monkeypatch.setattr(
+        parallel, "hardware_devices", lambda _runtime: [SimpleNamespace(index=0, name="Only GPU")]
+    )
+    monkeypatch.setattr(parallel.mp, "get_context", lambda _method: FailingContext())
+
+    pool = ParallelOcr(object())
+    assert started == []
+    assert pool.device_name == "Only GPU"
+    result = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+    assert [line.text for line in result.lines] == ["alone", "alone"]
+    pool.close()
+    pool.close()
+    assert pool._primary.closed is True
