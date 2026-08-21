@@ -100,21 +100,29 @@ class ParallelOcr:
         self._cost: dict[int, float] = {}
         self._workers = []
         self._generation = 0
-        for device in devices:
-            channel = self._context.Queue()
-            process = self._context.Process(
-                target=_worker,
-                args=(device.index, models, use_fp16, channel, self._replies),
-                daemon=True,
-            )
-            process.start()
-            self._requests[device.index] = channel
-            self._workers.append(process)
-        for _ in devices:
-            kind, index, name, seed = self._answer()
-            assert kind == "ready"
-            self._names[index] = name
-            self._cost[index] = seed
+        try:
+            for device in devices:
+                channel = self._context.Queue()
+                process = self._context.Process(
+                    target=_worker,
+                    args=(device.index, models, use_fp16, channel, self._replies),
+                    daemon=True,
+                )
+                process.start()
+                self._requests[device.index] = channel
+                self._workers.append(process)
+            for _ in devices:
+                kind, index, name, seed = self._answer()
+                assert kind == "ready"
+                self._names[index] = name
+                self._cost[index] = seed
+        except BaseException:
+            # A worker that dies before its "ready" — bad driver, OOM — used
+            # to raise straight out of a half-built pool: the primary engine
+            # (~700 MiB of VRAM, the leak OcrEngine.close exists for) and
+            # every already-started worker were never closed (VOCR-0038).
+            self.close()
+            raise
 
     def _answer(self):
         """The next worker reply, or a refusal naming the worker that died.

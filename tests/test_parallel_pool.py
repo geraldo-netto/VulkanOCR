@@ -23,6 +23,9 @@ class _Worker:
     def terminate(self):
         self._alive = False
 
+    def start(self):
+        return None
+
 
 class _Channel:
     def __init__(self):
@@ -144,3 +147,54 @@ def test_a_stale_reply_from_a_failed_read_cannot_poison_the_next_page():
     sent = [message for channel in pool._requests.values() for message in channel.sent]
     assert {message[0] for message in sent} == {2}
     assert sorted(message[1] for message in sent) == [0, 1, 2]
+
+
+def test_a_failed_start_closes_the_primary_and_every_started_worker(monkeypatch):
+    """A half-built pool leaks nothing (VOCR-0038)."""
+
+    from vulkanocr import parallel
+
+    engines = []
+
+    class FakeEngine:
+        def __init__(self, *_args, **_kwargs):
+            self.closed = False
+            engines.append(self)
+
+        def close(self):
+            self.closed = True
+
+    started = []
+
+    class _Replies(Queue):
+        def close(self):
+            return None
+
+        def cancel_join_thread(self):
+            return None
+
+    replies = _Replies()
+    replies.put(("error", 1, "RuntimeError('the driver refused the queue')"))
+    queues = iter([replies])
+
+    class FakeContext:
+        def Queue(self):  # noqa: N802 - multiprocessing's own name
+            return next(queues, None) or _Channel()
+
+        def Process(self, *, target, args, daemon):  # noqa: N802
+            process = _Worker(alive=True)
+            started.append(process)
+            return process
+
+    devices = [SimpleNamespace(index=0, name="Fast GPU"), SimpleNamespace(index=1, name="iGPU")]
+    monkeypatch.setattr(parallel, "OcrEngine", FakeEngine)
+    monkeypatch.setattr(parallel, "hardware_devices", lambda _runtime: devices)
+    monkeypatch.setattr(parallel.mp, "get_context", lambda _method: FakeContext())
+
+    with pytest.raises(OcrEngineError) as refusal:
+        ParallelOcr(object())
+    assert refusal.value.code == "worker-failed"
+    # The ~700 MiB primary engine and every started worker were let go.
+    assert [engine.closed for engine in engines] == [True]
+    assert len(started) == 2
+    assert all(not process.is_alive() for process in started)
