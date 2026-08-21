@@ -103,6 +103,7 @@ class ParallelOcr:
         self._cost: dict[int, float] = {}
         self._workers = []
         self._generation = 0
+        self._closed = False
         try:
             for device in devices:
                 channel = self._context.Queue()
@@ -279,6 +280,15 @@ class ParallelOcr:
         self._cost[index] = (self._cost[index] + elapsed_ms / columns) / 2
 
     def close(self) -> None:
+        """Release the workers, the queues, and the primary engine.
+
+        Safe to call twice, like `OcrEngine.close`: the second call used to
+        put the shutdown sentinel into queues the first call had closed and
+        raise "Queue is closed" (VOCR-0049).
+        """
+        if self._closed:
+            return
+        self._closed = True
         for channel in self._requests.values():
             # A dead worker's queue still accepts the sentinel; nothing to
             # guard beyond not caring whether anybody reads it.

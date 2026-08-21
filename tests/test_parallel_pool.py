@@ -27,6 +27,14 @@ class _Worker:
         return None
 
 
+class _Replies(Queue):
+    def close(self):
+        return None
+
+    def cancel_join_thread(self):
+        return None
+
+
 class _Channel:
     def __init__(self):
         self.sent = []
@@ -51,6 +59,7 @@ def _pool(*, replies: Queue, devices, workers) -> ParallelOcr:
     pool._cost = dict.fromkeys(pool._names, 1.0)
     pool._requests = {device.index: _Channel() for device in devices}
     pool._generation = 0
+    pool._closed = False
     return pool
 
 
@@ -198,14 +207,6 @@ def test_a_failed_start_closes_the_primary_and_every_started_worker(monkeypatch)
             self.closed = True
 
     started = []
-
-    class _Replies(Queue):
-        def close(self):
-            return None
-
-        def cancel_join_thread(self):
-            return None
-
     replies = _Replies()
     replies.put(("error", 1, "RuntimeError('the driver refused the queue')"))
     queues = iter([replies])
@@ -293,3 +294,19 @@ def test_near_equal_devices_split_the_page():
     # Both are fast (within 1.5x), so they take from the expensive end in
     # price order: the biggest crop to the cheaper device.
     assert sent == {0: [0, 2], 1: [1]}
+
+
+def test_close_is_safe_to_repeat():
+    """The same contract OcrEngine.close keeps (VOCR-0049)."""
+
+    replies = _Replies()
+    pool = _pool(
+        replies=replies,
+        devices=[SimpleNamespace(index=0, name="Fast GPU")],
+        workers=[_Worker(alive=True)],
+    )
+    pool._primary = SimpleNamespace(close=lambda: None)
+    pool.close()
+    pool.close()
+    # The sentinel went out exactly once per channel.
+    assert [channel.sent for channel in pool._requests.values()] == [[None]]
