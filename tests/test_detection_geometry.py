@@ -110,6 +110,46 @@ def test_rectangle_geometry_is_fitted_after_anisotropic_mapping():
     assert sorted((side_a, side_b)) == pytest.approx([2.0, 8000.0])
 
 
+def test_rotated_anisotropic_box_round_trips_into_original_coordinates():
+    import cv2
+
+    from vulkanocr.detection import TextRegion, _oriented, _original_rect
+
+    original_rect = ((520.0, 170.0), (32.0, 420.0), 23.0)
+    expected_corners = cv2.boxPoints(original_rect)
+    scale_x, scale_y = 640 / 1001, 212 / 333
+    wpad, hpad = 0, 12
+    probability_corners = expected_corners.copy()
+    probability_corners[:, 0] = probability_corners[:, 0] * scale_x + wpad // 2
+    probability_corners[:, 1] = probability_corners[:, 1] * scale_y + hpad // 2
+    contour = probability_corners.reshape((-1, 1, 2)).astype(np.float32)
+
+    (cx, cy), (side_a, side_b), angle = _original_rect(
+        contour,
+        scale_x=scale_x,
+        scale_y=scale_y,
+        wpad=wpad,
+        hpad=hpad,
+    )
+
+    assert (cx, cy) == pytest.approx(original_rect[0], abs=1e-3)
+    assert sorted((side_a, side_b)) == pytest.approx([32.0, 420.0], abs=1e-3)
+    restored_corners = cv2.boxPoints(((cx, cy), (side_a, side_b), angle))
+    for corner in expected_corners:
+        assert min(np.linalg.norm(corner - restored) for restored in restored_corners) < 1e-3
+
+    width, height, angle, vertical = _oriented(side_a, side_b, angle)
+    region = TextRegion(cx, cy, width, height, angle, vertical, score=0.9)
+    image = np.full((333, 1001, 3), 255, np.uint8)
+    cv2.fillConvexPoly(image, np.rint(expected_corners).astype(np.int32), (0, 0, 0))
+
+    patch = crop_region(image, region)
+
+    assert patch.shape[0] == 48
+    assert patch.shape[1] == pytest.approx(630, abs=2)
+    assert patch[12:-12, patch.shape[1] // 4 : patch.shape[1] * 3 // 4].mean() < 5
+
+
 def test_a_trailing_newline_is_a_file_convention_not_a_character_class(tmp_path):
     """The Avafly clone's ppocr_keys_v5 ends with a newline; the nihui copy
     does not. Both must yield the same classes, and the final literal-space
