@@ -72,6 +72,29 @@ class TestScore:
         assert result["word_distance"] == 2
         assert result["word_length"] == 2
 
+    @pytest.mark.parametrize(
+        ("truth", "observed"),
+        [
+            (["first line", "second line"], ["second line", "first line"]),
+            (
+                ["left top", "right top", "left bottom", "right bottom"],
+                ["left top", "left bottom", "right top", "right bottom"],
+            ),
+            (["שלום עולם", "בדיקת OCR"], ["בדיקת OCR", "שלום עולם"]),
+        ],
+        ids=["reversed-lines", "multi-column-interleaving", "right-to-left-lines"],
+    )
+    def test_document_traversal_regressions(self, truth, observed):
+        result = score_lines(truth, observed)
+        assert result["cer"] == 0
+        assert result["wer"] == 0
+        assert result["exact"] is True
+
+    def test_right_to_left_character_order_remains_significant(self):
+        result = score_lines(["שלום עולם"], ["םלוע םולש"])
+        assert result["cer"] > 0
+        assert result["exact"] is False
+
 
 class TestLoadRgb:
     def test_a_path_nothing_can_decode_is_refused_by_name(self, tmp_path):

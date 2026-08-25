@@ -20,6 +20,11 @@ reading order ignored. It is unit-tested in `tests/test_scoring.py`.
 Accuracy policy: reading order is excluded. Detector traversal is not a text
 recognition error; line content and within-line character/word order remain
 significant. Result documents still preserve engine order for diagnostics.
+After NFC and whitespace normalisation (which drops empty lines), CER and WER
+independently choose the minimum-cost one-to-one line alignment using character
+or word edit distance. An unmatched line costs all its units; duplicate lines
+remain distinct. Aggregate denominators are total ground-truth characters or
+words, and exact means equality of the normalised line multisets.
 
 ```sh
 .venv/bin/python benchmarks/make_corpus.py /tmp/corpus

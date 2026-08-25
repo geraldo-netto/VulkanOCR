@@ -34,7 +34,6 @@
 | VOCR-0105 | open | medium | s | Validate detection inference output rank and probability-map dimensions before contour processing, with stable errors for incompatible model ports. |
 | VOCR-0106 | open | medium | s | Validate recognition inference output rank and timestep/class dimensions before CTC decoding, with stable errors for incompatible model ports. |
 | VOCR-0107 | open | medium | s | Translate ncnn input/extract exceptions and return codes to stage-specific `OcrEngineError` values and make the CLI catch errors raised during reads. |
-| VOCR-0115 | open | high | s | Add reversed-line, multi-column, and right-to-left scorer regressions and update benchmark documentation to match measured order semantics. |
 | VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |
 | VOCR-0117 | open | medium | s | Add per-process DRM fdinfo proof where supported and retain AMD `gpu_busy_percent` as an explicitly system-wide fallback. |
 | VOCR-0118 | open | medium | s | Add fake AMD, Intel, NVIDIA, missing-counter, and wrong-device proof tests plus CLI documentation for each telemetry state. |
