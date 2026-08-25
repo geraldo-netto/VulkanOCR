@@ -29,6 +29,102 @@
       "image": "russian-cyrillic-clean.png"
     },
     {
+      "id": "russian-cyrillic-warm-small",
+      "script": "Cyrl",
+      "language": "ru",
+      "direction": "ltr",
+      "lines": [
+        "Съешь ещё этих мягких французских булок, да выпей чаю.",
+        "Ёж, подъём и щука: № 42 — всё хорошо!"
+      ],
+      "font": {
+        "family": "Noto Serif",
+        "file": "NotoSerif-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 927,
+        "height_px": 154
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            845,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "russian-cyrillic-warm-small.png"
+    },
+    {
+      "id": "russian-cyrillic-night-large",
+      "script": "Cyrl",
+      "language": "ru",
+      "direction": "ltr",
+      "lines": [
+        "Съешь ещё этих мягких французских булок, да выпей чаю.",
+        "Ёж, подъём и щука: № 42 — всё хорошо!"
+      ],
+      "font": {
+        "family": "Noto Sans",
+        "file": "NotoSans-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 1376,
+        "height_px": 206
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            176,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "russian-cyrillic-night-large.png"
+    },
+    {
       "id": "greek-clean",
       "script": "Grek",
       "language": "el",
@@ -54,6 +150,102 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "greek-clean.png"
+    },
+    {
+      "id": "greek-warm-small",
+      "script": "Grek",
+      "language": "el",
+      "direction": "ltr",
+      "lines": [
+        "Η γρήγορη αλεπού πηδά πάνω από τον τεμπέλη σκύλο.",
+        "ΐ, ΰ, ά, έ, ή, ί, ό, ύ, ώ — Μαΐου και ΑΪΔΙΟΪΚΟΪ!"
+      ],
+      "font": {
+        "family": "Noto Serif",
+        "file": "NotoSerif-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 810,
+        "height_px": 154
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            728,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "greek-warm-small.png"
+    },
+    {
+      "id": "greek-night-large",
+      "script": "Grek",
+      "language": "el",
+      "direction": "ltr",
+      "lines": [
+        "Η γρήγορη αλεπού πηδά πάνω από τον τεμπέλη σκύλο.",
+        "ΐ, ΰ, ά, έ, ή, ί, ό, ύ, ώ — Μαΐου και ΑΪΔΙΟΪΚΟΪ!"
+      ],
+      "font": {
+        "family": "Noto Sans",
+        "file": "NotoSans-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 1244,
+        "height_px": 208
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            178,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "greek-night-large.png"
     },
     {
       "id": "japanese-clean",
@@ -83,6 +275,102 @@
       "image": "japanese-clean.png"
     },
     {
+      "id": "japanese-warm-small",
+      "script": "Jpan",
+      "language": "ja",
+      "direction": "ltr",
+      "lines": [
+        "ひらがな、カタカナ、漢字を一緒に読みます。",
+        "東京でコンピューターとOCRを試験中！「日本語」"
+      ],
+      "font": {
+        "family": "Noto Serif CJK JP",
+        "file": "NotoSerifCJK-Regular.ttc#0",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 733,
+        "height_px": 149
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            651,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "japanese-warm-small.png"
+    },
+    {
+      "id": "japanese-night-large",
+      "script": "Jpan",
+      "language": "ja",
+      "direction": "ltr",
+      "lines": [
+        "ひらがな、カタカナ、漢字を一緒に読みます。",
+        "東京でコンピューターとOCRを試験中！「日本語」"
+      ],
+      "font": {
+        "family": "Noto Sans CJK JP",
+        "file": "NotoSansCJK-Regular.ttc#0",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 1109,
+        "height_px": 195
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            165,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "japanese-night-large.png"
+    },
+    {
       "id": "mandarin-han-clean",
       "script": "Hani",
       "language": "zh",
@@ -108,6 +396,102 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "mandarin-han-clean.png"
+    },
+    {
+      "id": "mandarin-han-warm-small",
+      "script": "Hani",
+      "language": "zh",
+      "direction": "ltr",
+      "lines": [
+        "简体中文：快速的棕色狐狸跳过懒狗。",
+        "繁體中文：臺灣、龍門與學習；測試成功！"
+      ],
+      "font": {
+        "family": "Noto Serif CJK SC",
+        "file": "NotoSerifCJK-Regular.ttc#2",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 640,
+        "height_px": 151
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            558,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "mandarin-han-warm-small.png"
+    },
+    {
+      "id": "mandarin-han-night-large",
+      "script": "Hani",
+      "language": "zh",
+      "direction": "ltr",
+      "lines": [
+        "简体中文：快速的棕色狐狸跳过懒狗。",
+        "繁體中文：臺灣、龍門與學習；測試成功！"
+      ],
+      "font": {
+        "family": "Noto Sans CJK SC",
+        "file": "NotoSansCJK-Regular.ttc#2",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 932,
+        "height_px": 201
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            171,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "mandarin-han-night-large.png"
     },
     {
       "id": "arabic-rtl-clean",
@@ -137,6 +521,102 @@
       "image": "arabic-rtl-clean.png"
     },
     {
+      "id": "arabic-rtl-warm-small",
+      "script": "Arab",
+      "language": "ar",
+      "direction": "rtl",
+      "lines": [
+        "الثعلب البني السريع يقفز فوق الكلب الكسول.",
+        "اختبار التشكيل: سَأَقْرَأُ نَصًّا واضحًا، رقم ٤٢!"
+      ],
+      "font": {
+        "family": "Noto Naskh Arabic",
+        "file": "NotoNaskhArabic-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 640,
+        "height_px": 165
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            558,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "arabic-rtl-warm-small.png"
+    },
+    {
+      "id": "arabic-rtl-night-large",
+      "script": "Arab",
+      "language": "ar",
+      "direction": "rtl",
+      "lines": [
+        "الثعلب البني السريع يقفز فوق الكلب الكسول.",
+        "اختبار التشكيل: سَأَقْرَأُ نَصًّا واضحًا، رقم ٤٢!"
+      ],
+      "font": {
+        "family": "Noto Sans Arabic",
+        "file": "NotoSansArabic-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 884,
+        "height_px": 233
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            203,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "arabic-rtl-night-large.png"
+    },
+    {
       "id": "hebrew-rtl-clean",
       "script": "Hebr",
       "language": "he",
@@ -162,6 +642,102 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "hebrew-rtl-clean.png"
+    },
+    {
+      "id": "hebrew-rtl-warm-small",
+      "script": "Hebr",
+      "language": "he",
+      "direction": "rtl",
+      "lines": [
+        "השועל החום המהיר קופץ מעל הכלב העצל.",
+        "בדיקת OCR בעברית: שלום, עולם! מספר 42."
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 640,
+        "height_px": 145
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            558,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "hebrew-rtl-warm-small.png"
+    },
+    {
+      "id": "hebrew-rtl-night-large",
+      "script": "Hebr",
+      "language": "he",
+      "direction": "rtl",
+      "lines": [
+        "השועל החום המהיר קופץ מעל הכלב העצל.",
+        "בדיקת OCR בעברית: שלום, עולם! מספר 42."
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 956,
+        "height_px": 193
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            163,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "hebrew-rtl-night-large.png"
     },
     {
       "id": "georgian-mkhedruli-clean",
@@ -191,6 +767,102 @@
       "image": "georgian-mkhedruli-clean.png"
     },
     {
+      "id": "georgian-mkhedruli-warm-small",
+      "script": "Geor",
+      "language": "ka",
+      "direction": "ltr",
+      "lines": [
+        "სწრაფი ყავისფერი მელა ზარმაც ძაღლს გადაახტა.",
+        "ქართული ტექსტი: თბილისი, № 42 — ყველაფერი კარგადაა!"
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 914,
+        "height_px": 155
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            832,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "georgian-mkhedruli-warm-small.png"
+    },
+    {
+      "id": "georgian-mkhedruli-night-large",
+      "script": "Geor",
+      "language": "ka",
+      "direction": "ltr",
+      "lines": [
+        "სწრაფი ყავისფერი მელა ზარმაც ძაღლს გადაახტა.",
+        "ქართული ტექსტი: თბილისი, № 42 — ყველაფერი კარგადაა!"
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 1400,
+        "height_px": 206
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            176,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "georgian-mkhedruli-night-large.png"
+    },
+    {
       "id": "azerbaijani-latin-clean",
       "script": "Latn",
       "language": "az",
@@ -216,6 +888,102 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "azerbaijani-latin-clean.png"
+    },
+    {
+      "id": "azerbaijani-latin-warm-small",
+      "script": "Latn",
+      "language": "az",
+      "direction": "ltr",
+      "lines": [
+        "Ə, Ğ, İ, Ö, Ş, Ü, Ç — Azərbaycan əlifbasının hərfləri.",
+        "Azərbaycan dili: ə, ğ, ı, ö, ş, ü, ç — Bakı, № 42!"
+      ],
+      "font": {
+        "family": "Noto Serif",
+        "file": "NotoSerif-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#54290E",
+        "background": "#FFF4D6"
+      },
+      "size": {
+        "font_px": 28,
+        "width_px": 758,
+        "height_px": 154
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            676,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        }
+      ],
+      "variant": "warm-28px-serif-objects",
+      "image": "azerbaijani-latin-warm-small.png"
+    },
+    {
+      "id": "azerbaijani-latin-night-large",
+      "script": "Latn",
+      "language": "az",
+      "direction": "ltr",
+      "lines": [
+        "Ə, Ğ, İ, Ö, Ş, Ü, Ç — Azərbaycan əlifbasının hərfləri.",
+        "Azərbaycan dili: ə, ğ, ı, ö, ş, ü, ç — Bakı, № 42!"
+      ],
+      "font": {
+        "family": "Noto Sans",
+        "file": "NotoSans-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#F5F7FF",
+        "background": "#14213D"
+      },
+      "size": {
+        "font_px": 44,
+        "width_px": 1135,
+        "height_px": 206
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            176,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "variant": "night-44px-objects",
+      "image": "azerbaijani-latin-night-large.png"
     }
   ]
 }

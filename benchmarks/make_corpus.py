@@ -16,7 +16,7 @@ import sys
 import cv2
 import numpy as np
 from corpus_schema import SCHEMA_VERSION, write_manifest
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageColor, ImageDraw, ImageFont, ImageOps
 
 FONTS = {
     "sans": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -214,6 +214,89 @@ SCRIPT_DOCUMENTS = [
     },
 ]
 
+ALTERNATE_FONTS = {
+    "ru": {
+        "font_path": "/usr/share/fonts/truetype/noto/NotoSerif-Regular.ttf",
+        "font": {
+            "family": "Noto Serif",
+            "file": "NotoSerif-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    },
+    "el": {
+        "font_path": "/usr/share/fonts/truetype/noto/NotoSerif-Regular.ttf",
+        "font": {
+            "family": "Noto Serif",
+            "file": "NotoSerif-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    },
+    "ja": {
+        "font_path": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+        "font_index": 0,
+        "font": {
+            "family": "Noto Serif CJK JP",
+            "file": "NotoSerifCJK-Regular.ttc#0",
+            "license": NOTO_LICENSE,
+        },
+    },
+    "zh": {
+        "font_path": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+        "font_index": 2,
+        "font": {
+            "family": "Noto Serif CJK SC",
+            "file": "NotoSerifCJK-Regular.ttc#2",
+            "license": NOTO_LICENSE,
+        },
+    },
+    "ar": {
+        "font_path": "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
+        "font": {
+            "family": "Noto Naskh Arabic",
+            "file": "NotoNaskhArabic-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    },
+    "az": {
+        "font_path": "/usr/share/fonts/truetype/noto/NotoSerif-Regular.ttf",
+        "font": {
+            "family": "Noto Serif",
+            "file": "NotoSerif-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    },
+}
+
+SAMPLE_VARIANTS = (
+    {
+        "suffix": "clean",
+        "name": "clean-36px",
+        "font_px": 36,
+        "pad": 36,
+        "font_role": "primary",
+        "palette": {"foreground": "#000000", "background": "#FFFFFF"},
+        "objects": (),
+    },
+    {
+        "suffix": "warm-small",
+        "name": "warm-28px-serif-objects",
+        "font_px": 28,
+        "pad": 42,
+        "font_role": "alternate",
+        "palette": {"foreground": "#54290E", "background": "#FFF4D6"},
+        "objects": ("circle", "rectangle"),
+    },
+    {
+        "suffix": "night-large",
+        "name": "night-44px-objects",
+        "font_px": 44,
+        "pad": 48,
+        "font_role": "primary",
+        "palette": {"foreground": "#F5F7FF", "background": "#14213D"},
+        "objects": ("circle", "polygon"),
+    },
+)
+
 
 def render(lines, font_path, size, width=900, pad=24):
     font = ImageFont.truetype(font_path, size)
@@ -261,29 +344,92 @@ def render_script_document(document: dict, font_px: int = 36, pad: int = 36) -> 
     return np.array(image)
 
 
+def _font_document(document: dict, role: str) -> dict:
+    if role != "alternate" or document["language"] not in ALTERNATE_FONTS:
+        return document
+    return {**document, **ALTERNATE_FONTS[document["language"]]}
+
+
+def _object_records(width: int, height: int, kinds: tuple[str, ...]) -> list[dict]:
+    records = []
+    for kind in kinds:
+        if kind == "circle":
+            records.append({"kind": kind, "bounds": [10, 10, 18, 18], "fill": "#FCA311"})
+        elif kind == "rectangle":
+            records.append({"kind": kind, "bounds": [width - 82, 12, 70, 14], "fill": "#8EC5D1"})
+        elif kind == "polygon":
+            records.append({"kind": kind, "bounds": [12, height - 30, 24, 18], "fill": "#5BC0BE"})
+    return records
+
+
+def _decorate_sample(
+    array: np.ndarray,
+    palette: dict[str, str],
+    kinds: tuple[str, ...],
+) -> tuple[np.ndarray, list[dict]]:
+    height, width = array.shape[:2]
+    records = _object_records(width, height, kinds)
+    canvas = Image.new("RGB", (width, height), ImageColor.getrgb(palette["background"]))
+    draw = ImageDraw.Draw(canvas)
+    for record in records:
+        x, y, object_width, object_height = record["bounds"]
+        bounds = (x, y, x + object_width, y + object_height)
+        fill = ImageColor.getrgb(record["fill"])
+        if record["kind"] == "circle":
+            draw.ellipse(bounds, fill=fill)
+        elif record["kind"] == "rectangle":
+            draw.rectangle(bounds, fill=fill)
+        else:
+            draw.polygon(
+                [
+                    (x, y + object_height),
+                    (x + object_width // 2, y),
+                    (x + object_width, y + object_height),
+                ],
+                fill=fill,
+            )
+    text_mask = ImageOps.invert(Image.fromarray(array).convert("L"))
+    text_layer = Image.new("RGB", (width, height), ImageColor.getrgb(palette["foreground"]))
+    canvas.paste(text_layer, mask=text_mask)
+    return np.array(canvas), records
+
+
 def make_script_samples(output: pathlib.Path) -> int:
     output.mkdir(parents=True, exist_ok=True)
     cases = []
     for document in SCRIPT_DOCUMENTS:
-        array = render_script_document(document)
-        image = f"{document['id']}.png"
-        cv2.imwrite(str(output / image), array[:, :, ::-1])
-        height, width = array.shape[:2]
-        cases.append(
-            {
-                "id": document["id"],
-                "script": document["script"],
-                "language": document["language"],
-                "direction": document["direction"],
-                "lines": document["lines"],
-                "font": document["font"],
-                "palette": {"foreground": "#000000", "background": "#FFFFFF"},
-                "size": {"font_px": 36, "width_px": width, "height_px": height},
-                "background_objects": [],
-                "variant": "clean-36px",
-                "image": image,
-            }
-        )
+        for variant in SAMPLE_VARIANTS:
+            font_document = _font_document(document, variant["font_role"])
+            array = render_script_document(font_document, variant["font_px"], variant["pad"])
+            if variant["objects"]:
+                array, objects = _decorate_sample(array, variant["palette"], variant["objects"])
+            else:
+                objects = []
+            case_id = document["id"]
+            if variant["suffix"] != "clean":
+                case_id = f"{case_id.removesuffix('-clean')}-{variant['suffix']}"
+            image = f"{case_id}.png"
+            cv2.imwrite(str(output / image), array[:, :, ::-1])
+            height, width = array.shape[:2]
+            cases.append(
+                {
+                    "id": case_id,
+                    "script": document["script"],
+                    "language": document["language"],
+                    "direction": document["direction"],
+                    "lines": document["lines"],
+                    "font": font_document["font"],
+                    "palette": variant["palette"],
+                    "size": {
+                        "font_px": variant["font_px"],
+                        "width_px": width,
+                        "height_px": height,
+                    },
+                    "background_objects": objects,
+                    "variant": variant["name"],
+                    "image": image,
+                }
+            )
     write_manifest(
         output / "ground-truth.json",
         {"schema_version": SCHEMA_VERSION, "cases": cases},

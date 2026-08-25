@@ -5,6 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
+from PIL import Image, ImageColor
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "benchmarks"))
 from corpus_schema import load_manifest, validate_manifest  # noqa: E402, I001
@@ -109,3 +110,20 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     for letter in "ƏĞİÖŞÜÇ":
         assert letter in azerbaijani["lines"][0]
     assert (tmp_path / azerbaijani["image"]).is_file()
+    assert len(document["cases"]) == 24
+    assert {case["size"]["font_px"] for case in document["cases"]} == {28, 36, 44}
+    assert len({tuple(case["palette"].values()) for case in document["cases"]}) == 3
+    assert len({case["font"]["family"] for case in document["cases"]}) >= 8
+    assert {item["kind"] for case in document["cases"] for item in case["background_objects"]} == {
+        "circle",
+        "rectangle",
+        "polygon",
+    }
+    for case in document["cases"]:
+        image = Image.open(tmp_path / case["image"]).convert("RGB")
+        background = ImageColor.getrgb(case["palette"]["background"])
+        width, height = image.size
+        assert all(image.getpixel((x, 0)) == background for x in range(width))
+        assert all(image.getpixel((x, height - 1)) == background for x in range(width))
+        assert all(image.getpixel((0, y)) == background for y in range(height))
+        assert all(image.getpixel((width - 1, y)) == background for y in range(height))
