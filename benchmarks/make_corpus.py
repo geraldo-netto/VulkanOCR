@@ -196,6 +196,22 @@ SCRIPT_DOCUMENTS = [
             "license": FONT_LICENSE,
         },
     },
+    {
+        "id": "azerbaijani-latin-clean",
+        "script": "Latn",
+        "language": "az",
+        "direction": "ltr",
+        "lines": [
+            "Ə, Ğ, İ, Ö, Ş, Ü, Ç — Azərbaycan əlifbasının hərfləri.",
+            "Azərbaycan dili: ə, ğ, ı, ö, ş, ü, ç — Bakı, № 42!",
+        ],
+        "font_path": "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "font": {
+            "family": "Noto Sans",
+            "file": "NotoSans-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    },
 ]
 
 

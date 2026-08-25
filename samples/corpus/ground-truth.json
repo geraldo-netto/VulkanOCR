@@ -189,6 +189,33 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "georgian-mkhedruli-clean.png"
+    },
+    {
+      "id": "azerbaijani-latin-clean",
+      "script": "Latn",
+      "language": "az",
+      "direction": "ltr",
+      "lines": [
+        "Ə, Ğ, İ, Ö, Ş, Ü, Ç — Azərbaycan əlifbasının hərfləri.",
+        "Azərbaycan dili: ə, ğ, ı, ö, ş, ü, ç — Bakı, № 42!"
+      ],
+      "font": {
+        "family": "Noto Sans",
+        "file": "NotoSans-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 922,
+        "height_px": 162
+      },
+      "background_objects": [],
+      "variant": "clean-36px",
+      "image": "azerbaijani-latin-clean.png"
     }
   ]
 }

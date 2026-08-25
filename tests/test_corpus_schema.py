@@ -104,3 +104,8 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     assert georgian["script"] == "Geor"
     assert "ქართული ტექსტი" in georgian["lines"][1]
     assert (tmp_path / georgian["image"]).is_file()
+    azerbaijani = next(case for case in document["cases"] if case["language"] == "az")
+    assert azerbaijani["script"] == "Latn"
+    for letter in "ƏĞİÖŞÜÇ":
+        assert letter in azerbaijani["lines"][0]
+    assert (tmp_path / azerbaijani["image"]).is_file()
