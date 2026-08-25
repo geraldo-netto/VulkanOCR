@@ -55,7 +55,14 @@ def _wire_components(
     devices = tuple((device_provider or hardware_devices)(runtime))
     build_engine = engine_factory or OcrEngine
     build_fleet = fleet_factory or MultiprocessingWorkerFleet
-    primary = build_engine(models, runtime=runtime, options=resolved, device=devices[0])
+    primary_nets = ("det", "rec") if len(devices) == 1 else ("det",)
+    primary = build_engine(
+        models,
+        runtime=runtime,
+        options=resolved,
+        device=devices[0],
+        nets=primary_nets,
+    )
     if len(devices) == 1:
         return _ParallelComponents(resolved, primary, None)
     try:
@@ -110,11 +117,15 @@ class ParallelOcr:
         self._generation += 1
         generation = self._generation
         pairs = self._primary.crops(rgb)
-        if self._fleet is None or self._fleet.count <= 1 or len(pairs) < 2:
+        if self._fleet is None:
             return assemble_result(
                 self._primary.device_name,
                 ((region, self._primary.recognise(patch)) for region, patch in pairs),
             )
+        if not pairs:
+            return assemble_result(self.device_name, ())
+        if self._fleet.count == 0:
+            raise OcrEngineError("worker-unavailable", "every recognition worker is unavailable")
         return assemble_result(self.device_name, self._dispatch(generation, pairs))
 
     def _dispatch(self, generation: int, pairs: list[tuple]) -> list:

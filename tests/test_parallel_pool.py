@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from vulkanocr.detection import TextRegion
+from vulkanocr.engine import OcrEngineError
 from vulkanocr.parallel import ParallelOcr
 from vulkanocr.workers import WorkerAnswer
 
@@ -132,14 +133,22 @@ def test_near_equal_devices_split_the_page():
     assert [message[1] for message in fleet.sent[1]] == [1]
 
 
-@pytest.mark.parametrize("fleet", [None, FakeFleet({}, [], {})])
-def test_absent_or_empty_fleet_reads_on_primary(fleet):
-    pool = _pool(fleet, _pairs())
+def test_absent_fleet_reads_on_single_device_primary():
+    pool = _pool(None, _pairs())
 
     result = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
 
     assert result.device_name == "Fast GPU"
     assert [line.text for line in result.lines] == ["fallback"] * 3
+
+
+def test_empty_multi_gpu_fleet_is_stable_refusal_until_lazy_fallback_exists():
+    pool = _pool(FakeFleet({}, [], {}), _pairs())
+
+    with pytest.raises(OcrEngineError) as caught:
+        pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+
+    assert caught.value.code == "worker-unavailable"
 
 
 def test_close_is_safe_to_repeat():
@@ -229,5 +238,6 @@ def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
     assert built[0][0] is models
     assert built[0][1]["runtime"] is runtime
     assert built[0][1]["device"] is devices[0]
+    assert built[0][1]["nets"] == ("det",)
     assert built[1][0] is models and built[1][1] == devices
     assert built[1][2] is pool._options
