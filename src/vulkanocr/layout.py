@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 ANGLE_TOLERANCE_DEGREES = 12.0
 PERPENDICULAR_TOLERANCE = 0.6
 MAX_GAP_THICKNESSES = 4.0
+MAX_OVERLAP_THICKNESSES = 2.0
+MAX_OVERLAP_FRACTION = 0.5
 MIN_SPACE_GAP_THICKNESSES = 0.25
 SPACE_WIDTH_THICKNESSES = 0.5
 MAX_INFERRED_SPACES = 8
@@ -84,7 +86,11 @@ def _same_visual_line(left: OcrLine, right: OcrLine) -> bool:
         return False
     centre_distance = abs(dx * axis[0] + dy * axis[1])
     gap = centre_distance - (left.length + right.length) / 2.0
-    return gap <= MAX_GAP_THICKNESSES * thickness
+    overlap_limit = min(
+        MAX_OVERLAP_THICKNESSES * thickness,
+        MAX_OVERLAP_FRACTION * min(left.length, right.length),
+    )
+    return -overlap_limit <= gap <= MAX_GAP_THICKNESSES * thickness
 
 
 def _join_component(lines: Sequence[OcrLine]) -> tuple[OcrLine, ...]:

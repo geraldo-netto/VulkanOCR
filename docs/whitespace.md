@@ -16,11 +16,14 @@ Two regions can belong to the same visual line only when all of these hold:
 - both are horizontal or both are vertical;
 - their long axes differ by at most 12 degrees;
 - their perpendicular centre offset is at most 0.6 times the greater thickness;
-- their nearest long-axis edges are no more than four times the greater
-  thickness apart; and
+- their nearest long-axis edges overlap by no more than both two times the
+  greater thickness and half the shorter region length, and are no more than
+  four times the greater thickness apart; and
 - their strong Unicode directions agree, or at least one region is neutral.
 
-These conservative limits keep nearby columns and separate rows independent.
+These conservative limits keep duplicate/strongly overlapping boxes, nearby
+columns, and separate rows independent while admitting the modest overlap DB
+unclip adds around neighbouring fragments.
 Eligible neighbours form a visual-line component. Left-to-right components are
 ordered forward on the canonical axis; components containing only strong
 right-to-left text are ordered backward. Characters inside each recognition
