@@ -1,11 +1,13 @@
 """GPU-free orchestration tests over the worker-fleet protocol."""
 
 from types import SimpleNamespace
+from typing import cast
 
 import numpy as np
 import pytest
 
 from vulkanocr.detection import TextRegion
+from vulkanocr.engine import OcrModels
 from vulkanocr.parallel import ParallelOcr, PrimaryEngine
 from vulkanocr.workers import WorkerAnswer, WorkerFleet
 
@@ -50,15 +52,17 @@ class FakeFleet:
 class FakePrimary:
     device_name = "Fast GPU"
 
-    def __init__(self, pairs, result=("fallback", 0.9)):
+    def __init__(self, pairs: list[tuple], result: tuple[str, float] = ("fallback", 0.9)):
         self.pairs = pairs
         self.result = result
         self.close_calls = 0
 
-    def crops(self, _rgb):
+    def crops(self, rgb: np.ndarray) -> list[tuple]:
+        del rgb
         return self.pairs
 
-    def recognise(self, _patch):
+    def recognise(self, patch: np.ndarray) -> tuple[str, float]:
+        del patch
         return self.result
 
     def close(self):
@@ -79,7 +83,7 @@ def _pool(fleet: WorkerFleet | None, pairs):
         SimpleNamespace(index=index, name=f"GPU {index}") for index in range(device_count)
     )
     pool = ParallelOcr(
-        object(),
+        cast(OcrModels, object()),
         runtime=object(),
         device_provider=lambda _runtime: devices,
         engine_factory=build_engine,
@@ -200,10 +204,12 @@ def test_one_device_builds_no_worker_fleet(monkeypatch):
         def __init__(self, *_args, **_kwargs):
             self.closed = False
 
-        def crops(self, _rgb):
+        def crops(self, rgb: np.ndarray) -> list[tuple]:
+            del rgb
             return [(_region(10.0), np.zeros((48, 100, 3), dtype=np.uint8))] * 2
 
-        def recognise(self, _patch):
+        def recognise(self, patch: np.ndarray) -> tuple[str, float]:
+            del patch
             return ("alone", 0.9)
 
         def close(self):
@@ -221,7 +227,7 @@ def test_one_device_builds_no_worker_fleet(monkeypatch):
         lambda *_args: pytest.fail("single device must not build a fleet"),
     )
 
-    pool = ParallelOcr(object())
+    pool = ParallelOcr(cast(OcrModels, object()))
     assert pool.device_name == "Only GPU"
     assert [line.text for line in pool.read(np.zeros((10, 10, 3), np.uint8)).lines] == [
         "alone",
@@ -232,7 +238,7 @@ def test_one_device_builds_no_worker_fleet(monkeypatch):
 
 def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
     runtime = object()
-    models = object()
+    models = cast(OcrModels, object())
     devices = (
         SimpleNamespace(index=0, name="Fast GPU"),
         SimpleNamespace(index=1, name="iGPU"),
@@ -246,13 +252,15 @@ def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
         def close(self):
             return None
 
-        def crops(self, _rgb):
+        def crops(self, rgb: np.ndarray) -> list[tuple]:
+            del rgb
             return []
 
-        def recognise(self, _patch):
+        def recognise(self, patch: np.ndarray) -> tuple[str, float]:
+            del patch
             return ("", 0.0)
 
-    def build_engine(received_models, **kwargs):
+    def build_engine(received_models, **kwargs) -> PrimaryEngine:
         built.append((received_models, kwargs))
         return FakeEngine()
 
@@ -298,17 +306,19 @@ def test_detection_parent_and_lazy_fallback_release_every_loaded_net():
             self.closed = False
             engines.append(self)
 
-        def crops(self, _rgb):
+        def crops(self, rgb: np.ndarray) -> list[tuple]:
+            del rgb
             return [(_region(10.0), np.zeros((48, 100, 3), dtype=np.uint8))]
 
-        def recognise(self, _patch):
+        def recognise(self, patch: np.ndarray) -> tuple[str, float]:
+            del patch
             return ("recovered", 0.9)
 
         def close(self):
             self.closed = True
 
     pool = ParallelOcr(
-        object(),
+        cast(OcrModels, object()),
         runtime=object(),
         device_provider=lambda _runtime: devices,
         engine_factory=RecordingEngine,

@@ -76,7 +76,7 @@ git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, 
 
 | you want to | install |
 | --- | --- |
-| run the tests, lint | `.venv/bin/python -m pip install -e '.[dev]'` (pytest, ruff) |
+| run development gates | `.venv/bin/python -m pip install -e '.[dev]'` (pytest, Ruff, Pyright) |
 | regenerate the corpus | `.venv/bin/python -m pip install -e '.[corpus]'` (Pillow, used by `benchmarks/make_corpus.py`) |
 | run the PaddleOCR comparison | the `paddle` extra — in a **separate** venv, never this one: `python3 -m venv ~/paddle-venv && ~/paddle-venv/bin/python -m pip install 'vulkanocr[paddle] @ file://'$PWD` ([docs/benchmarks.md](docs/benchmarks.md) says why, and why it pins paddlepaddle `<3.3`) |
 | run the Tesseract comparison | the system binary: `sudo apt install tesseract-ocr` (Debian/Ubuntu) |
@@ -89,6 +89,8 @@ git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, 
 .venv/bin/vulkanocr samples/sample-applet.png --precision fp16
 .venv/bin/vulkanocr samples/sample-applet.png --precision int8  # quantized graphs
 .venv/bin/python -m pytest -q                                # live tests skip without a GPU
+.venv/bin/ruff check .
+.venv/bin/pyright
 ```
 
 `--precision fp32|fp16|int8` states every ncnn precision option explicitly.

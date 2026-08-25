@@ -4,7 +4,6 @@
 
 | id | status | severity | effort | description |
 | --- | --- | --- | --- | --- |
-| VOCR-0072 | open | medium | s | Make the configured Pyright check clean and add it to documented development gates; it currently reports 10 errors, including nullable `_replies` access and test doubles incompatible with inferred concrete `ParallelOcr` internals. |
 | VOCR-0075 | open | medium | s | Make `make_corpus.py` importable and its output trustworthy: parse the output path inside `main`, validate configured fonts, check every `cv2.imwrite` result, and centralize manifest/image writes in a tested corpus writer. Import currently raises `IndexError` without a CLI argument and failed image writes are reported as success. |
 | VOCR-0076 | open | medium | s | Return and print an explicit telemetry-unavailable proof state instead of an empty `gpu_busy_percent` section on drivers without that counter. |
 | VOCR-0078 | open | medium | s | Build labeled positive-CJK and negative glyph-icon/background-object cases that reproduce false readings such as `花` and `回`. |
