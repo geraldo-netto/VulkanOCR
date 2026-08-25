@@ -81,6 +81,33 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "japanese-clean.png"
+    },
+    {
+      "id": "mandarin-han-clean",
+      "script": "Hani",
+      "language": "zh",
+      "direction": "ltr",
+      "lines": [
+        "简体中文：快速的棕色狐狸跳过懒狗。",
+        "繁體中文：臺灣、龍門與學習；測試成功！"
+      ],
+      "font": {
+        "family": "Noto Sans CJK SC",
+        "file": "NotoSansCJK-Regular.ttc#2",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 756,
+        "height_px": 158
+      },
+      "background_objects": [],
+      "variant": "clean-36px",
+      "image": "mandarin-han-clean.png"
     }
   ]
 }

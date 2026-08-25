@@ -131,6 +131,23 @@ SCRIPT_DOCUMENTS = [
             "license": NOTO_LICENSE,
         },
     },
+    {
+        "id": "mandarin-han-clean",
+        "script": "Hani",
+        "language": "zh",
+        "direction": "ltr",
+        "lines": [
+            "简体中文：快速的棕色狐狸跳过懒狗。",
+            "繁體中文：臺灣、龍門與學習；測試成功！",
+        ],
+        "font_path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "font_index": 2,
+        "font": {
+            "family": "Noto Sans CJK SC",
+            "file": "NotoSansCJK-Regular.ttc#2",
+            "license": NOTO_LICENSE,
+        },
+    },
 ]
 
 

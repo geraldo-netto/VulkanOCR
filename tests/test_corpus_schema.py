@@ -85,3 +85,8 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     assert japanese["script"] == "Jpan"
     assert "ひらがな、カタカナ、漢字" in japanese["lines"][0]
     assert (tmp_path / japanese["image"]).is_file()
+    mandarin = next(case for case in document["cases"] if case["language"] == "zh")
+    assert mandarin["script"] == "Hani"
+    assert "简体中文" in mandarin["lines"][0]
+    assert "繁體中文" in mandarin["lines"][1]
+    assert (tmp_path / mandarin["image"]).is_file()
