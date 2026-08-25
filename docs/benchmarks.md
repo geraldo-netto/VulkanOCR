@@ -33,7 +33,7 @@ words, and exact means equality of the normalised line multisets.
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision int8
 python3 benchmarks/read_with_tesseract.py /tmp/corpus 6
 <paddle-venv>/bin/python benchmarks/read_with_paddleocr.py /tmp/corpus
-python3 benchmarks/compare_engines.py /tmp
+python3 benchmarks/compare_engines.py /tmp /tmp/corpus
 ```
 
 The Paddle virtualenv installs the `paddle` extra's pins

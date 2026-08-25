@@ -58,18 +58,22 @@ def test_the_loop_warms_first_measures_each_case_and_writes_the_document(tmp_pat
     assert "case00-clean" in printed and "cer=" in printed
 
 
-def test_an_empty_results_document_is_named_not_a_crash(tmp_path):
-    """The guard runs before the arithmetic it guards (VOCR-0054)."""
+def test_an_empty_results_document_is_refused_by_engine_name(tmp_path):
 
     import subprocess
 
     (tmp_path / "results-empty.json").write_text(
         json.dumps({"engine": "went/nowhere", "device": "CPU", "rows": []}), encoding="utf-8"
     )
+    manifest = tmp_path / "ground-truth.json"
+    manifest.write_text(json.dumps([{"id": "expected", "variant": "clean"}]), encoding="utf-8")
     script = pathlib.Path(__file__).resolve().parents[1] / "benchmarks" / "compare_engines.py"
     done = subprocess.run(
-        [sys.executable, str(script), str(tmp_path)], capture_output=True, text=True, check=False
+        [sys.executable, str(script), str(tmp_path), str(manifest)],
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    assert done.returncode == 0, done.stderr
-    assert "went/nowhere" in done.stdout
-    assert "(no rows)" in done.stdout
+    assert done.returncode == 2
+    assert "went/nowhere" in done.stderr
+    assert "missing ids ['expected']" in done.stderr
