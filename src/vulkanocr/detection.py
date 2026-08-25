@@ -12,6 +12,8 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
+from .inference import extract_output
+
 MEAN = (0.485 * 255.0, 0.456 * 255.0, 0.406 * 255.0)
 NORM = (1 / 0.229 / 255.0, 1 / 0.224 / 255.0, 1 / 0.225 / 255.0)
 STRIDE = 32
@@ -85,15 +87,7 @@ def detect_regions(
     )
     padded.substract_mean_normalize(MEAN, NORM)
 
-    extractor = net.create_extractor()
-    try:
-        extractor.input(blobs[0], padded)
-        code, out = extractor.extract(blobs[1])
-        if code != 0:
-            raise RuntimeError("detection extraction failed")
-        probability = np.array(out)[0]
-    finally:
-        del extractor
+    probability = np.array(extract_output(net, padded, blobs, stage="detection"))[0]
 
     return _regions(probability, scale_x, scale_y, wpad, hpad)
 

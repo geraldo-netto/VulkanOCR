@@ -10,6 +10,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from .inference import extract_output
+
 MEAN = (127.5, 127.5, 127.5)
 NORM = (1 / 127.5, 1 / 127.5, 1 / 127.5)
 TARGET_HEIGHT = 48
@@ -54,15 +56,7 @@ def patch_logits(
         np.ascontiguousarray(patch), runtime.Mat.PixelType.PIXEL_RGB2BGR, width, height
     )
     mat.substract_mean_normalize(MEAN, NORM)
-    extractor = net.create_extractor()
-    try:
-        extractor.input(blobs[0], mat)
-        code, out = extractor.extract(blobs[1])
-        if code != 0:
-            raise RuntimeError("recognition extraction failed")
-        logits = np.array(out)
-    finally:
-        del extractor
+    logits = np.array(extract_output(net, mat, blobs, stage="recognition"))
     return logits[0] if logits.ndim == 3 else logits
 
 

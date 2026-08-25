@@ -5,6 +5,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from .inference import extract_output
+
 TARGET_WIDTH = 160
 TARGET_HEIGHT = 80
 MAX_DOWNSCALE = 3.0
@@ -50,15 +52,8 @@ def classify_patch_orientation(
         TARGET_HEIGHT,
     )
     mat.substract_mean_normalize(MEAN, NORM)
-    extractor = net.create_extractor()
-    try:
-        extractor.input(blobs[0], mat)
-        code, out = extractor.extract(blobs[1])
-        if code != 0:
-            raise RuntimeError("orientation extraction failed")
-        scores = np.asarray(out, dtype=np.float32).reshape(-1)
-    finally:
-        del extractor
+    out = extract_output(net, mat, blobs, stage="orientation")
+    scores = np.asarray(out, dtype=np.float32).reshape(-1)
     if scores.size != len(labels):
         raise RuntimeError(f"orientation output has {scores.size} classes; expected {len(labels)}")
     index = int(scores.argmax())
