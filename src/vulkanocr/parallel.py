@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -22,18 +23,25 @@ class ParallelOcr:
         *,
         use_fp16: bool | None = None,
         options: InferenceOptions | None = None,
+        runtime: Any = None,
+        device_provider: Callable[[Any], tuple] | None = None,
+        engine_factory: Callable[..., Any] | None = None,
+        fleet_factory: Callable[..., WorkerFleet] | None = None,
     ):
-        try:
-            import ncnn  # noqa: PLC0415 - optional environment boundary
-        except ImportError as error:  # pragma: no cover
-            raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
+        if runtime is None:
+            try:
+                import ncnn as runtime  # type: ignore[no-redef]  # noqa: PLC0415
+            except ImportError as error:  # pragma: no cover
+                raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
         if options is not None and use_fp16 is not None:
             raise OcrEngineError("options-conflict", "options cannot be combined with use_fp16")
         self._options = options or (InferenceOptions.fp16() if use_fp16 else InferenceOptions())
-        devices = hardware_devices(ncnn)
-        self._primary = OcrEngine(
+        devices = tuple((device_provider or hardware_devices)(runtime))
+        build_engine = engine_factory or OcrEngine
+        build_fleet = fleet_factory or MultiprocessingWorkerFleet
+        self._primary = build_engine(
             models,
-            runtime=ncnn,
+            runtime=runtime,
             options=self._options,
             device=devices[0],
         )
@@ -43,7 +51,7 @@ class ParallelOcr:
         if len(devices) == 1:
             return
         try:
-            self._fleet = MultiprocessingWorkerFleet(models, devices, self._options)
+            self._fleet = build_fleet(models, devices, self._options)
         except BaseException:
             self.close()
             raise

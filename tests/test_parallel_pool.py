@@ -192,3 +192,42 @@ def test_one_device_builds_no_worker_fleet(monkeypatch):
         "alone",
     ]
     pool.close()
+
+
+def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
+    runtime = object()
+    models = object()
+    devices = (
+        SimpleNamespace(index=0, name="Fast GPU"),
+        SimpleNamespace(index=1, name="iGPU"),
+    )
+    built = []
+    fleet = FakeFleet({0: 1.0, 1: 1.0}, [])
+
+    class FakeEngine:
+        device_name = "Fast GPU"
+
+        def close(self):
+            return None
+
+    def build_engine(received_models, **kwargs):
+        built.append((received_models, kwargs))
+        return FakeEngine()
+
+    def build_fleet(received_models, received_devices, options):
+        built.append((received_models, received_devices, options))
+        return fleet
+
+    pool = ParallelOcr(
+        models,
+        runtime=runtime,
+        device_provider=lambda received: devices if received is runtime else (),
+        engine_factory=build_engine,
+        fleet_factory=build_fleet,
+    )
+
+    assert built[0][0] is models
+    assert built[0][1]["runtime"] is runtime
+    assert built[0][1]["device"] is devices[0]
+    assert built[1][0] is models and built[1][1] == devices
+    assert built[1][2] is pool._options
