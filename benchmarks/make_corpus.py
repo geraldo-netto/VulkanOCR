@@ -9,6 +9,7 @@ size, font, contrast, blur, noise, JPEG, skew, and dense UI text.
 
 from __future__ import annotations
 
+import math
 import pathlib
 import sys
 
@@ -28,6 +29,7 @@ FONT_FACTS = {
     "mono": ("DejaVu Sans Mono", "DejaVuSansMono.ttf"),
 }
 FONT_LICENSE = "Bitstream Vera Fonts Copyright"
+NOTO_LICENSE = "SIL Open Font License 1.1"
 
 DOCUMENTS = [
     {
@@ -79,6 +81,25 @@ DOCUMENTS = [
     },
 ]
 
+SCRIPT_DOCUMENTS = [
+    {
+        "id": "russian-cyrillic-clean",
+        "script": "Cyrl",
+        "language": "ru",
+        "direction": "ltr",
+        "lines": [
+            "Съешь ещё этих мягких французских булок, да выпей чаю.",
+            "Ёж, подъём и щука: № 42 — всё хорошо!",
+        ],
+        "font_path": "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "font": {
+            "family": "Noto Sans",
+            "file": "NotoSans-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    }
+]
+
 
 def render(lines, font_path, size, width=900, pad=24):
     font = ImageFont.truetype(font_path, size)
@@ -90,6 +111,71 @@ def render(lines, font_path, size, width=900, pad=24):
         draw.text((pad, y), line, font=font, fill="black")
         y += int(size * 1.6)
     return np.array(image)
+
+
+def render_script_document(document: dict, font_px: int = 36, pad: int = 36) -> np.ndarray:
+    font = ImageFont.truetype(document["font_path"], font_px, index=document.get("font_index", 0))
+    direction = document["direction"]
+    language = document["language"]
+    probe = Image.new("RGB", (1, 1), "white")
+    probe_draw = ImageDraw.Draw(probe)
+    boxes = [
+        probe_draw.textbbox((0, 0), line, font=font, direction=direction, language=language)
+        for line in document["lines"]
+    ]
+    gap = max(8, font_px // 3)
+    width = max(
+        640,
+        math.ceil(max(right - left for left, _top, right, _bottom in boxes) + 2 * pad),
+    )
+    height = math.ceil(
+        sum(bottom - top for _left, top, _right, bottom in boxes) + gap * (len(boxes) - 1) + 2 * pad
+    )
+    image = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(image)
+    y = pad
+    for line, (left, top, _right, bottom) in zip(document["lines"], boxes, strict=True):
+        draw.text(
+            (pad - left, y - top),
+            line,
+            font=font,
+            fill="black",
+            direction=direction,
+            language=language,
+        )
+        y += bottom - top + gap
+    return np.array(image)
+
+
+def make_script_samples(output: pathlib.Path) -> int:
+    output.mkdir(parents=True, exist_ok=True)
+    cases = []
+    for document in SCRIPT_DOCUMENTS:
+        array = render_script_document(document)
+        image = f"{document['id']}.png"
+        cv2.imwrite(str(output / image), array[:, :, ::-1])
+        height, width = array.shape[:2]
+        cases.append(
+            {
+                "id": document["id"],
+                "script": document["script"],
+                "language": document["language"],
+                "direction": document["direction"],
+                "lines": document["lines"],
+                "font": document["font"],
+                "palette": {"foreground": "#000000", "background": "#FFFFFF"},
+                "size": {"font_px": 36, "width_px": width, "height_px": height},
+                "background_objects": [],
+                "variant": "clean-36px",
+                "image": image,
+            }
+        )
+    write_manifest(
+        output / "ground-truth.json",
+        {"schema_version": SCHEMA_VERSION, "cases": cases},
+    )
+    print(f"{len(cases)} committed script samples -> {output}")
+    return 0
 
 
 def skew(array, degrees):
@@ -184,4 +270,6 @@ def main(output: pathlib.Path | None = None) -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "--script-samples":
+        sys.exit(make_script_samples(pathlib.Path(sys.argv[2])))
     sys.exit(main())

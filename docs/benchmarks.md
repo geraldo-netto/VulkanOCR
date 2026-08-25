@@ -32,6 +32,7 @@ words, and exact means equality of the normalised line multisets.
 
 ```sh
 .venv/bin/python benchmarks/make_corpus.py /tmp/corpus
+.venv/bin/python benchmarks/make_corpus.py --script-samples samples/corpus
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision fp16
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision int8

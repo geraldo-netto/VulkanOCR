@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "russian-cyrillic-clean",
+      "script": "Cyrl",
+      "language": "ru",
+      "direction": "ltr",
+      "lines": [
+        "Съешь ещё этих мягких французских булок, да выпей чаю.",
+        "Ёж, подъём и щука: № 42 — всё хорошо!"
+      ],
+      "font": {
+        "family": "Noto Sans",
+        "file": "NotoSans-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 1119,
+        "height_px": 164
+      },
+      "background_objects": [],
+      "variant": "clean-36px",
+      "image": "russian-cyrillic-clean.png"
+    }
+  ]
+}

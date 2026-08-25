@@ -9,6 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "benchmarks"))
 from corpus_schema import load_manifest, validate_manifest  # noqa: E402, I001
 from make_corpus import main as make_corpus  # noqa: E402, I001
+from make_corpus import make_script_samples  # noqa: E402, I001
 
 
 def _case() -> dict:
@@ -64,3 +65,15 @@ def test_generator_writes_a_schema_valid_manifest(tmp_path):
     validate_manifest(document)
     assert len(document["cases"]) == 55
     assert all((tmp_path / case["image"]).is_file() for case in document["cases"])
+
+
+def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
+    assert make_script_samples(tmp_path) == 0
+
+    document = load_manifest(tmp_path / "ground-truth.json")
+    validate_manifest(document)
+    russian = next(case for case in document["cases"] if case["language"] == "ru")
+    assert russian["script"] == "Cyrl"
+    assert russian["font"]["license"] == "SIL Open Font License 1.1"
+    assert "Ёж" in russian["lines"][1]
+    assert (tmp_path / russian["image"]).is_file()

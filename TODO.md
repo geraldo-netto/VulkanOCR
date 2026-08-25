@@ -15,7 +15,6 @@
 | VOCR-0080 | open | low | s | Unify benchmark engine lifecycle and no-text precondition handling in a shared harness; several scripts manually close resources only on success, while batching scripts crash on blank images through `min`, division by zero, or a zero range step. |
 | VOCR-0081 | open | low | xs | Reject negative `--repeat` values in the CLI instead of silently treating them as zero extra passes. |
 | VOCR-0082 | open | low | xs | Restore documentation consistency: link active gaps to `TODO.md` instead of the historical `docs/findings.md`, and remove or update stale claims of 74 tests now that the suite collects 76. |
-| VOCR-0084 | open | high | s | Generate and commit Russian/Cyrillic corpus samples with representative letters, punctuation, exact ground truth, and an appropriate licensed font. |
 | VOCR-0085 | open | high | s | Generate and commit Greek corpus samples with tonos and dialytika coverage, punctuation, exact ground truth, and an appropriate licensed font. |
 | VOCR-0086 | open | high | s | Generate and commit Japanese corpus samples mixing hiragana, katakana, kanji, punctuation, exact ground truth, and an appropriate licensed font. |
 | VOCR-0087 | open | high | s | Generate and commit Mandarin Chinese corpus samples covering simplified and traditional glyphs, punctuation, exact ground truth, and an appropriate licensed font. |
