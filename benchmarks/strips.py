@@ -17,6 +17,8 @@ GAP = 32
 
 def pack(crops: list[np.ndarray], gap: int = GAP) -> tuple[np.ndarray, list[tuple[int, int]]]:
     """One 48-high strip holding every crop, and where each one landed."""
+    if not crops:
+        raise ValueError("cannot pack an empty crop sequence")
     width = sum(crop.shape[1] for crop in crops) + gap * (len(crops) - 1)
     strip = np.full((48, width, 3), 255, dtype=np.uint8)
     spans, x = [], 0

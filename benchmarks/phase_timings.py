@@ -12,10 +12,9 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
+from benchmark_harness import benchmark_engine, require_nonempty, require_text_crops
 from scoring import load_rgb
 
-from vulkanocr.catalog import models_for
-from vulkanocr.engine import OcrEngine
 from vulkanocr.recognition import crop_region
 
 RUNS = 5
@@ -23,7 +22,13 @@ RUNS = 5
 
 def main() -> int:
     rgb = load_rgb(sys.argv[1])
-    engine = OcrEngine(models_for(sys.argv[2] if len(sys.argv) > 2 else "v6-medium"))
+    model_set = sys.argv[2] if len(sys.argv) > 2 else "v6-medium"
+    with benchmark_engine(model_set) as engine:
+        return _measure(engine, rgb)
+
+
+def _measure(engine, rgb) -> int:
+    require_text_crops(engine, rgb)
     engine.read(rgb)  # warm pass pays for shader compilation
 
     detect_ms = crop_ms = rec_ms = 0.0
@@ -36,6 +41,7 @@ def main() -> int:
 
         tick = time.perf_counter()
         patches = [patch for patch in (crop_region(rgb, r) for r in regions) if patch.size]
+        require_nonempty(patches, "text crops detected")
         crop_ms += time.perf_counter() - tick
 
         tick = time.perf_counter()
@@ -53,7 +59,6 @@ def main() -> int:
         f"  everything else          {(wall - detect_ms - crop_ms - rec_ms) / RUNS * 1000:7.1f} ms"
     )
     print(f"  wall per read            {wall / RUNS * 1000:7.1f} ms")
-    engine.close()
     return 0
 
 

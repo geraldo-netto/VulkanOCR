@@ -14,11 +14,9 @@ import sys
 import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
+from benchmark_harness import benchmark_engine, require_text_crops
 from scoring import load_rgb
 from strips import decode_spans, pack
-
-from vulkanocr.catalog import models_for
-from vulkanocr.engine import OcrEngine
 
 
 def read_one(engine, crop):
@@ -33,12 +31,12 @@ def read_packed(engine, crops):
 def main() -> int:
     image = sys.argv[1]
     rgb = load_rgb(image)
-    with OcrEngine(models_for("v6-medium")) as engine:
+    with benchmark_engine("v6-medium") as engine:
         return _measure(engine, rgb)
 
 
 def _measure(engine, rgb) -> int:
-    crops = [patch for _region, patch in engine.crops(rgb)]
+    crops = require_text_crops(engine, rgb)
     base = [read_one(engine, c) for c in crops]
 
     for threshold in (0, 96, 160, 256, 10_000):

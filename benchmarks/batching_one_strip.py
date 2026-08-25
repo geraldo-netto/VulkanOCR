@@ -17,11 +17,9 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
+from benchmark_harness import benchmark_engine, require_text_crops
 from scoring import load_rgb
 from strips import decode_spans, pack
-
-from vulkanocr.catalog import models_for
-from vulkanocr.engine import OcrEngine
 
 
 def batched_texts(engine, crops, group):
@@ -39,12 +37,12 @@ def single_texts(engine, crops):
 def main() -> int:
     image, model_set = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "v6-medium")
     rgb = load_rgb(image)
-    with OcrEngine(models_for(model_set)) as engine:
+    with benchmark_engine(model_set) as engine:
         return _measure(engine, rgb, model_set)
 
 
 def _measure(engine, rgb, model_set) -> int:
-    crops = [patch for _region, patch in engine.crops(rgb)]
+    crops = require_text_crops(engine, rgb)
     widths = [crop.shape[1] for crop in crops]
     print(f"{model_set}: {len(crops)} crops, widths {min(widths)}..{max(widths)}")
 

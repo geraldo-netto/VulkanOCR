@@ -5,7 +5,6 @@
 | id | status | severity | effort | description |
 | --- | --- | --- | --- | --- |
 | VOCR-0079 | open | medium | xs | Define and document a geometry-based word-gap heuristic, including punctuation and right-to-left behavior, before adding whitespace postprocessing. |
-| VOCR-0080 | open | low | s | Unify benchmark engine lifecycle and no-text precondition handling in a shared harness; several scripts manually close resources only on success, while batching scripts crash on blank images through `min`, division by zero, or a zero range step. |
 | VOCR-0124 | open | medium | s | Add a whitespace-reconstruction stage over recognised regions using the approved gap heuristic without changing CTC decoding. |
 | VOCR-0125 | open | medium | s | Add proportional-font, monospace, punctuation, multiple-space, rotated-line, and right-to-left whitespace reconstruction regressions. |
 
