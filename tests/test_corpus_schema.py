@@ -95,3 +95,8 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     assert arabic["direction"] == "rtl"
     assert "سَأَقْرَأُ" in arabic["lines"][1]
     assert (tmp_path / arabic["image"]).is_file()
+    hebrew = next(case for case in document["cases"] if case["language"] == "he")
+    assert hebrew["script"] == "Hebr"
+    assert hebrew["direction"] == "rtl"
+    assert "שלום, עולם!" in hebrew["lines"][1]
+    assert (tmp_path / hebrew["image"]).is_file()

@@ -15,7 +15,6 @@
 | VOCR-0080 | open | low | s | Unify benchmark engine lifecycle and no-text precondition handling in a shared harness; several scripts manually close resources only on success, while batching scripts crash on blank images through `min`, division by zero, or a zero range step. |
 | VOCR-0081 | open | low | xs | Reject negative `--repeat` values in the CLI instead of silently treating them as zero extra passes. |
 | VOCR-0082 | open | low | xs | Restore documentation consistency: link active gaps to `TODO.md` instead of the historical `docs/findings.md`, and remove or update stale claims of 74 tests now that the suite collects 76. |
-| VOCR-0089 | open | high | s | Generate and commit correctly shaped right-to-left Hebrew corpus samples with punctuation and exact ground truth independently of recognition-model availability. |
 | VOCR-0090 | open | high | s | Generate and commit Georgian corpus samples covering Mkhedruli text, punctuation, exact ground truth, and an appropriate licensed font. |
 | VOCR-0091 | open | high | s | Generate and commit Azerbaijani corpus samples covering `Ə`, `Ğ`, `İ`, `Ö`, `Ş`, `Ü`, `Ç`, exact ground truth, and an appropriate licensed font. |
 | VOCR-0092 | open | high | s | Add deterministic visual variants combining multiple foreground/background colour palettes, font sizes and families, and non-text background objects without clipping text. |

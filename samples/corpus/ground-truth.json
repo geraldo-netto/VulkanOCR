@@ -135,6 +135,33 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "arabic-rtl-clean.png"
+    },
+    {
+      "id": "hebrew-rtl-clean",
+      "script": "Hebr",
+      "language": "he",
+      "direction": "rtl",
+      "lines": [
+        "השועל החום המהיר קופץ מעל הכלב העצל.",
+        "בדיקת OCR בעברית: שלום, עולם! מספר 42."
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 775,
+        "height_px": 152
+      },
+      "background_objects": [],
+      "variant": "clean-36px",
+      "image": "hebrew-rtl-clean.png"
     }
   ]
 }

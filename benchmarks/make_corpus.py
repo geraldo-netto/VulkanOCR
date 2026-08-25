@@ -164,6 +164,22 @@ SCRIPT_DOCUMENTS = [
             "license": NOTO_LICENSE,
         },
     },
+    {
+        "id": "hebrew-rtl-clean",
+        "script": "Hebr",
+        "language": "he",
+        "direction": "rtl",
+        "lines": [
+            "השועל החום המהיר קופץ מעל הכלב העצל.",
+            "בדיקת OCR בעברית: שלום, עולם! מספר 42.",
+        ],
+        "font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "font": {
+            "family": "DejaVu Sans",
+            "file": "DejaVuSans.ttf",
+            "license": FONT_LICENSE,
+        },
+    },
 ]
 
 
