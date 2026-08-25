@@ -1,10 +1,44 @@
 """The catalogue: default model set and per-port facts."""
 
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
 
 from vulkanocr import CATALOG, DEFAULT_MODEL, OcrEngineError, OcrModels, models_for
+
+
+def test_detector_and_recognizer_specs_own_independent_runtime_facts():
+    from vulkanocr.catalog import DetectorSpec, RecognizerSpec
+
+    detector = DetectorSpec("det.param", ("det-in", "det-out"))
+    recognizer = RecognizerSpec(
+        "rec.param",
+        "keys.txt",
+        ("rec-in", "rec-out"),
+        dictionary_includes_blank=False,
+        required_precision="int8",
+    )
+
+    assert detector.param == "det.param"
+    assert detector.blobs == ("det-in", "det-out")
+    assert detector.required_precision is None
+    assert recognizer.param == "rec.param"
+    assert recognizer.dictionary == "keys.txt"
+    assert recognizer.blobs == ("rec-in", "rec-out")
+    assert recognizer.ctc_offset == 1
+    assert recognizer.required_precision == "int8"
+    with pytest.raises(FrozenInstanceError):
+        detector.param = "changed.param"
+
+
+def test_named_components_preserve_each_upstream_port_convention():
+    from vulkanocr.catalog import DETECTORS, RECOGNIZERS
+
+    assert DETECTORS["v6-medium-det"].blobs == ("input", "output")
+    assert RECOGNIZERS["v6-medium-rec"].dictionary_includes_blank is True
+    assert DETECTORS["v5-mobile-det"].blobs == ("in0", "out0")
+    assert RECOGNIZERS["v5-mobile-rec"].ctc_offset == 1
 
 
 def test_the_default_is_the_current_generation():

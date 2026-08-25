@@ -4,7 +4,6 @@
 
 | id | status | severity | effort | description |
 | --- | --- | --- | --- | --- |
-| VOCR-0064 | open | medium | s | Add independent immutable detector and recognizer specifications with their own paths, blob names, dictionary convention, and precision requirements. |
 | VOCR-0066 | open | medium | s | Extract detector and recognizer extractor creation, input submission, output extraction, and cleanup into one checked ncnn inference helper. |
 | VOCR-0072 | open | medium | s | Make the configured Pyright check clean and add it to documented development gates; it currently reports 10 errors, including nullable `_replies` access and test doubles incompatible with inferred concrete `ParallelOcr` internals. |
 | VOCR-0075 | open | medium | s | Make `make_corpus.py` importable and its output trustworthy: parse the output path inside `main`, validate configured fonts, check every `cv2.imwrite` result, and centralize manifest/image writes in a tested corpus writer. Import currently raises `IndexError` without a CLI argument and failed image writes are reported as success. |

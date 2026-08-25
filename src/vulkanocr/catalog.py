@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .engine import OcrModels
+from .options import Precision
 
 # PP-OCRv6 medium is the default: it is the current PaddleOCR generation and,
 # measured on this host's RX 6600 XT against the same page, it was the only
@@ -32,6 +33,85 @@ DEFAULT_MODEL = "v6-medium"
 
 _NIHUI = "nihui-port/app/src/main/assets"
 _AVAFLY = "PaddleOCR-ncnn-CPP/models"
+
+
+@dataclass(frozen=True, slots=True)
+class DetectorSpec:
+    """One detection graph and the runtime facts intrinsic to it.
+
+    ``required_precision`` is ``None`` for ordinary float graphs. A graph
+    converted specifically for quantized inference states ``"int8"`` here,
+    independently from whichever recognizer a profile pairs it with.
+    """
+
+    param: str
+    blobs: tuple[str, str]
+    required_precision: Precision | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizerSpec:
+    """One recognition graph, its character map, and its runtime facts."""
+
+    param: str
+    dictionary: str
+    blobs: tuple[str, str]
+    dictionary_includes_blank: bool
+    required_precision: Precision | None = None
+
+    @property
+    def ctc_offset(self) -> int:
+        """How this recognizer's class indices address its dictionary."""
+        return 0 if self.dictionary_includes_blank else 1
+
+
+# Component names are stable seams for future profiles. A language-specific
+# or quantized recognizer can be added without copying a detector record.
+DETECTORS: dict[str, DetectorSpec] = {
+    "v6-medium-det": DetectorSpec(
+        f"{_AVAFLY}/PP_OCRv6_medium_det.param",
+        ("input", "output"),
+    ),
+    "v6-small-det": DetectorSpec(
+        f"{_AVAFLY}/PP_OCRv6_small_det.param",
+        ("input", "output"),
+    ),
+    "v6-tiny-det": DetectorSpec(
+        f"{_AVAFLY}/PP_OCRv6_tiny_det.param",
+        ("input", "output"),
+    ),
+    "v5-mobile-det": DetectorSpec(
+        f"{_NIHUI}/PP_OCRv5_mobile_det.ncnn.param",
+        ("in0", "out0"),
+    ),
+}
+
+RECOGNIZERS: dict[str, RecognizerSpec] = {
+    "v6-medium-rec": RecognizerSpec(
+        f"{_AVAFLY}/PP_OCRv6_medium_rec.param",
+        f"{_AVAFLY}/ppocr_keys_v6.txt",
+        ("input", "output"),
+        True,
+    ),
+    "v6-small-rec": RecognizerSpec(
+        f"{_AVAFLY}/PP_OCRv6_small_rec.param",
+        f"{_AVAFLY}/ppocr_keys_v6.txt",
+        ("input", "output"),
+        True,
+    ),
+    "v6-tiny-rec": RecognizerSpec(
+        f"{_AVAFLY}/PP_OCRv6_tiny_rec.param",
+        f"{_AVAFLY}/ppocr_keys_v6_tiny.txt",
+        ("input", "output"),
+        True,
+    ),
+    "v5-mobile-rec": RecognizerSpec(
+        f"{_NIHUI}/PP_OCRv5_mobile_rec.ncnn.param",
+        _PACKAGED_KEYS,
+        ("in0", "out0"),
+        False,
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
