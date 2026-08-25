@@ -15,6 +15,22 @@ from .engine import OcrEngine, OcrEngineError, OcrModels
 from .options import InferenceOptions
 
 _PROBE_COLUMNS = 96
+_DEFAULT_READY_TIMEOUT_S = 30.0
+
+
+def _timeout(error: tuple[str, str] | None) -> None:
+    if error is None:
+        raise RuntimeError("a message deadline requires a timeout error")
+    raise OcrEngineError(*error)
+
+
+def _message_wait(deadline: float | None, timeout_error: tuple[str, str] | None) -> float:
+    if deadline is None:
+        return 0.5
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        _timeout(timeout_error)
+    return min(0.5, remaining)
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,9 +117,12 @@ class MultiprocessingWorkerFleet:
         *,
         context: Any = None,
         target=worker_main,
+        ready_timeout_s: float = _DEFAULT_READY_TIMEOUT_S,
     ):
         if not devices:
             raise ValueError("a worker fleet requires at least one device")
+        if ready_timeout_s <= 0:
+            raise ValueError("ready_timeout_s must be positive")
         self._context = context or mp.get_context("spawn")
         self._replies = self._context.Queue()
         self._devices = {device.index: device for device in devices}
@@ -128,8 +147,15 @@ class MultiprocessingWorkerFleet:
                     raise
                 self._requests[device.index] = channel
                 self._processes[device.index] = process
+            ready_deadline = time.monotonic() + ready_timeout_s
             for _ in devices:
-                kind, index, name, seed = self._next_message()
+                kind, index, name, seed = self._next_message(
+                    deadline=ready_deadline,
+                    timeout_error=(
+                        "worker-start-timeout",
+                        f"workers did not become ready within {ready_timeout_s:g} seconds",
+                    ),
+                )
                 if kind != "ready":
                     raise OcrEngineError("worker-protocol", f"expected ready, received {kind}")
                 self._names[index] = name
@@ -170,29 +196,41 @@ class MultiprocessingWorkerFleet:
         if device_index in self._costs:
             self._costs[device_index] = cost
 
-    def _next_message(self):
+    def _next_message(
+        self,
+        *,
+        deadline: float | None = None,
+        timeout_error: tuple[str, str] | None = None,
+    ):
         while True:
             try:
-                message = self._replies.get(timeout=0.5)
+                message = self._replies.get(timeout=_message_wait(deadline, timeout_error))
             except Empty:
-                for index, process in tuple(self._processes.items()):
-                    if not process.is_alive():
-                        device = self._devices[index]
-                        exitcode = process.exitcode
-                        self._retire(index)
-                        raise OcrEngineError(
-                            "worker-died",
-                            f"the GPU worker for {device.name} exited with code {exitcode}",
-                        ) from None
+                self._raise_if_worker_died()
+                if deadline is not None and time.monotonic() >= deadline:
+                    _timeout(timeout_error)
                 continue
             if message[0] == "error":
-                _kind, index, detail = message
-                device = self._devices[index]
-                self._retire(index)
-                raise OcrEngineError(
-                    "worker-failed", f"the GPU worker for {device.name} raised {detail}"
-                )
+                self._raise_worker_error(message)
             return message
+
+    def _raise_if_worker_died(self) -> None:
+        for index, process in tuple(self._processes.items()):
+            if process.is_alive():
+                continue
+            device = self._devices[index]
+            exitcode = process.exitcode
+            self._retire(index)
+            raise OcrEngineError(
+                "worker-died",
+                f"the GPU worker for {device.name} exited with code {exitcode}",
+            ) from None
+
+    def _raise_worker_error(self, message) -> None:
+        _kind, index, detail = message
+        device = self._devices[index]
+        self._retire(index)
+        raise OcrEngineError("worker-failed", f"the GPU worker for {device.name} raised {detail}")
 
     def _retire(self, index: int) -> None:
         self._names.pop(index, None)

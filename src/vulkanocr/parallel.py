@@ -43,6 +43,7 @@ def _wire_components(
     device_provider: Callable[[Any], tuple] | None,
     engine_factory: Callable[..., PrimaryEngine] | None,
     fleet_factory: Callable[..., WorkerFleet] | None,
+    worker_ready_timeout_s: float,
 ) -> _ParallelComponents:
     """Concrete construction kept outside OCR orchestration."""
     if runtime is None:
@@ -55,7 +56,6 @@ def _wire_components(
     resolved = options or (InferenceOptions.fp16() if use_fp16 else InferenceOptions())
     devices = tuple((device_provider or hardware_devices)(runtime))
     build_engine = engine_factory or OcrEngine
-    build_fleet = fleet_factory or MultiprocessingWorkerFleet
     primary_nets = ("det", "rec") if len(devices) == 1 else ("det",)
     primary = build_engine(
         models,
@@ -67,7 +67,15 @@ def _wire_components(
     if len(devices) == 1:
         return _ParallelComponents(resolved, primary, None, None)
     try:
-        fleet = build_fleet(models, devices, resolved)
+        if fleet_factory is None:
+            fleet = MultiprocessingWorkerFleet(
+                models,
+                devices,
+                resolved,
+                ready_timeout_s=worker_ready_timeout_s,
+            )
+        else:
+            fleet = fleet_factory(models, devices, resolved)
     except BaseException:
         primary.close()
         raise
@@ -97,6 +105,7 @@ class ParallelOcr:
         device_provider: Callable[[Any], tuple] | None = None,
         engine_factory: Callable[..., PrimaryEngine] | None = None,
         fleet_factory: Callable[..., WorkerFleet] | None = None,
+        worker_ready_timeout_s: float = 30.0,
     ):
         components = _wire_components(
             models,
@@ -106,6 +115,7 @@ class ParallelOcr:
             device_provider=device_provider,
             engine_factory=engine_factory,
             fleet_factory=fleet_factory,
+            worker_ready_timeout_s=worker_ready_timeout_s,
         )
         self._options = components.options
         self._primary = components.primary

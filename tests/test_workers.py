@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from vulkanocr.device import VulkanDevice
 from vulkanocr.engine import OcrEngineError, OcrModels
 from vulkanocr.options import InferenceOptions
 from vulkanocr.workers import MultiprocessingWorkerFleet, worker_main
@@ -47,6 +48,24 @@ class FakeQueue(Queue):
 
     def cancel_join_thread(self):
         self.cancelled = True
+
+
+class SilentContext:
+    def __init__(self):
+        self.queues = []
+        self.processes = []
+        self.Queue = self._queue
+        self.Process = self._process
+
+    def _queue(self):
+        queue = FakeQueue()
+        self.queues.append(queue)
+        return queue
+
+    def _process(self, **_kwargs):
+        process = FakeProcess()
+        self.processes.append(process)
+        return process
 
 
 def _fleet(replies, devices, processes):
@@ -155,3 +174,23 @@ def test_each_worker_loads_and_closes_one_recognition_only_engine(monkeypatch):
 
     assert [engine.nets for engine in built] == [("rec",), ("rec",)]
     assert all(engine.closed for engine in built)
+
+
+def test_live_silent_worker_hits_configured_startup_deadline_and_closes_fleet():
+    context = SilentContext()
+    device = cast(VulkanDevice, SimpleNamespace(index=0, name="Silent GPU"))
+
+    with pytest.raises(OcrEngineError) as caught:
+        MultiprocessingWorkerFleet(
+            cast(OcrModels, object()),
+            (device,),
+            InferenceOptions(),
+            context=context,
+            ready_timeout_s=0.01,
+        )
+
+    assert caught.value.code == "worker-start-timeout"
+    assert "0.01 seconds" in caught.value.detail
+    assert context.queues[1].sent == [None]
+    assert all(queue.closed and queue.cancelled for queue in context.queues)
+    assert all(not process.is_alive() for process in context.processes)
