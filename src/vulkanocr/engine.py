@@ -15,6 +15,7 @@ import numpy as np
 
 from .detection import detect_regions
 from .device import select_hardware_device
+from .options import InferenceOptions
 from .recognition import CtcDictionaryMismatchError, crop_region, decode_ctc, patch_logits
 
 DEFAULT_TARGET_SIZE = 640
@@ -141,8 +142,9 @@ class OcrEngine:
         *,
         runtime: Any = None,
         target_size: int = DEFAULT_TARGET_SIZE,
-        use_vulkan: bool = True,
-        use_fp16: bool = False,
+        use_vulkan: bool | None = None,
+        use_fp16: bool | None = None,
+        options: InferenceOptions | None = None,
         device: Any = None,
         nets: tuple[str, ...] = ("det", "rec"),
     ):
@@ -164,11 +166,7 @@ class OcrEngine:
             raise OcrEngineError("nets-invalid", "nets must name 'det', 'rec', or both")
         self._models = models.validated(nets)
         self._target_size = self._validated_target_size(target_size)
-        # Constructor knobs rather than a subclass seam: two benchmarks used
-        # to override _load_net for exactly these two flags, and both copies
-        # dropped the load-return checks and the device pinning on the way.
-        self._use_vulkan = bool(use_vulkan)
-        self._use_fp16 = bool(use_fp16)
+        self._options = self._resolved_options(options, use_vulkan, use_fp16)
         # A caller may pin a specific device — the parallel engine builds one
         # engine per card — otherwise the most capable one is selected.
         self._device = device if device is not None else select_hardware_device(runtime)
@@ -301,11 +299,9 @@ class OcrEngine:
     def _load_net(self, param: Path):
         net = self._runtime.Net()
         loaded = False
-        net.opt.use_vulkan_compute = self._use_vulkan
-        net.opt.use_fp16_packed = self._use_fp16
-        net.opt.use_fp16_storage = self._use_fp16
-        net.opt.use_fp16_arithmetic = self._use_fp16
-        if self._use_vulkan:
+        for name in InferenceOptions.__dataclass_fields__:
+            setattr(net.opt, name, getattr(self._options, name))
+        if self._options.use_vulkan_compute:
             net.set_vulkan_device(self._device.index)
         try:
             if net.load_param(str(param)) != 0:
@@ -317,6 +313,27 @@ class OcrEngine:
             if not loaded:
                 net.clear()
         return net
+
+    @staticmethod
+    def _resolved_options(
+        options: InferenceOptions | None,
+        use_vulkan: bool | None,
+        use_fp16: bool | None,
+    ) -> InferenceOptions:
+        if options is not None:
+            if use_vulkan is not None or use_fp16 is not None:
+                raise OcrEngineError(
+                    "options-conflict",
+                    "options cannot be combined with use_vulkan or use_fp16",
+                )
+            return options
+        fp16 = bool(use_fp16) if use_fp16 is not None else False
+        return InferenceOptions(
+            use_vulkan_compute=bool(use_vulkan) if use_vulkan is not None else True,
+            use_fp16_packed=fp16,
+            use_fp16_storage=fp16,
+            use_fp16_arithmetic=fp16,
+        )
 
     @staticmethod
     def _load_dictionary(path: Path) -> tuple[str, ...]:

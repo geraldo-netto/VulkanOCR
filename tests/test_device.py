@@ -1,5 +1,7 @@
 """Device policy: hardware only, discrete preferred, software refused."""
 
+from itertools import product
+
 import numpy as np
 import pytest
 
@@ -66,7 +68,7 @@ class _FakeNet:
         self.opt = type("Opt", (), {})()
 
     def set_vulkan_device(self, _index):
-        pass
+        self.vulkan_device = _index
 
     def load_param(self, path):
         return 1 if "refuses" in path else 0
@@ -265,3 +267,80 @@ class TestEngineInputValidation:
             engine.decode(np.zeros((4, 5), dtype=np.float32))
         assert caught.value.code == "dictionary-mismatch"
         assert "5 classes" in caught.value.detail
+
+
+class TestInferenceOptionsAreApplied:
+    _PRECISION_FIELDS = (
+        "use_fp16_packed",
+        "use_fp16_storage",
+        "use_fp16_arithmetic",
+        "use_int8_inference",
+        "use_int8_packed",
+        "use_int8_storage",
+        "use_int8_arithmetic",
+    )
+
+    def models_and_runtime(self, tmp_path):
+        from vulkanocr.engine import OcrModels
+
+        built = []
+
+        class RecordingNet(_FakeNet):
+            def __init__(self):
+                super().__init__()
+                built.append(self)
+
+        runtime = FakeRuntime([FakeInfo("Radeon", 0)])
+        runtime.Net = RecordingNet
+        for name in ("model-det", "model-rec"):
+            (tmp_path / f"{name}.param").write_text("7767517\n")
+            (tmp_path / f"{name}.bin").write_bytes(b"")
+        keys = tmp_path / "keys.txt"
+        keys.write_text("a\nb\n")
+        models = OcrModels(tmp_path / "model-det.param", tmp_path / "model-rec.param", keys)
+        return models, runtime, built
+
+    def test_every_fp16_and_int8_combination_reaches_every_net(self, tmp_path):
+        from vulkanocr import InferenceOptions, OcrEngine
+
+        models, runtime, built = self.models_and_runtime(tmp_path)
+        for values in product((False, True), repeat=len(self._PRECISION_FIELDS)):
+            expected = dict(zip(self._PRECISION_FIELDS, values, strict=True))
+            options = InferenceOptions(**expected)
+            with OcrEngine(models, runtime=runtime, options=options):
+                nets = built[-2:]
+                assert len(nets) == 2
+                for net in nets:
+                    assert {name: getattr(net.opt, name) for name in expected} == expected
+                    assert net.opt.use_vulkan_compute is True
+                    assert net.vulkan_device == 0
+
+    def test_vulkan_false_skips_device_pinning(self, tmp_path):
+        from vulkanocr import InferenceOptions, OcrEngine
+
+        models, runtime, built = self.models_and_runtime(tmp_path)
+        with OcrEngine(
+            models,
+            runtime=runtime,
+            options=InferenceOptions(use_vulkan_compute=False),
+        ):
+            assert all(not hasattr(net, "vulkan_device") for net in built)
+            assert all(net.opt.use_vulkan_compute is False for net in built)
+
+    def test_legacy_fp16_flag_maps_to_explicit_options(self, tmp_path):
+        from vulkanocr import OcrEngine
+
+        models, runtime, built = self.models_and_runtime(tmp_path)
+        with OcrEngine(models, runtime=runtime, use_fp16=True):
+            for net in built:
+                assert net.opt.use_fp16_packed is True
+                assert net.opt.use_fp16_storage is True
+                assert net.opt.use_fp16_arithmetic is True
+
+    def test_explicit_options_cannot_mix_with_legacy_flags(self, tmp_path):
+        from vulkanocr import InferenceOptions, OcrEngine, OcrEngineError
+
+        models, runtime, _built = self.models_and_runtime(tmp_path)
+        with pytest.raises(OcrEngineError) as caught:
+            OcrEngine(models, runtime=runtime, options=InferenceOptions(), use_fp16=True)
+        assert caught.value.code == "options-conflict"
