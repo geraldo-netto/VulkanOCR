@@ -7,7 +7,9 @@ import numpy as np
 import pytest
 
 from vulkanocr import InferenceOptions, cli
+from vulkanocr.device import VulkanDevice
 from vulkanocr.engine import OcrEngineError
+from vulkanocr.proof import ProofDevice, ProofResult
 
 
 def test_precision_defaults_to_fp32():
@@ -37,6 +39,7 @@ def test_precision_choice_reaches_the_single_engine(monkeypatch):
 def test_read_time_engine_error_is_printed_and_the_engine_is_closed(monkeypatch):
     class FailingEngine:
         device_name = "Test GPU"
+        devices = (VulkanDevice(0, "Test GPU", 0),)
         closed = False
 
         def __enter__(self):
@@ -66,3 +69,20 @@ def test_read_time_engine_error_is_printed_and_the_engine_is_closed(monkeypatch)
         cli.main()
 
     assert engine.closed is True
+
+
+def test_report_prints_an_explicit_telemetry_unavailable_state(capsys):
+    result = SimpleNamespace(lines=(), undecoded_regions=0, filtered_regions=0)
+    proof = ProofResult(
+        provider="fake",
+        scope="system",
+        selected_devices=(ProofDevice(0, "Test GPU"),),
+        samples=(),
+        supported=False,
+        unavailable_reason="driver exposes no telemetry counter",
+    )
+
+    cli._report(result, 10.0, [], proof)
+
+    output = capsys.readouterr().out
+    assert "GPU telemetry unavailable: driver exposes no telemetry counter" in output

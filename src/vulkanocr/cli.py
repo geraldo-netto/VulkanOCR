@@ -23,7 +23,7 @@ from vulkanocr import (
 )
 from vulkanocr.device import HardwareVulkanUnavailableError
 from vulkanocr.engine import OcrEngineError
-from vulkanocr.proof import busy_sampler
+from vulkanocr.proof import ProofResult, busy_sampler, system_busy_result
 
 
 def _non_negative_int(value: str) -> int:
@@ -87,11 +87,13 @@ def main() -> int:
         print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")
         print(f"precision: {arguments.precision}")
         print(f"device: {engine.device_name}")
+        selected_devices = engine.devices
         with engine, busy_sampler() as samples:
             result, first_ms, timings = _timed_reads(engine, rgb, arguments.repeat)
+        proof = system_busy_result(selected_devices, samples)
     except (OcrEngineError, HardwareVulkanUnavailableError) as error:
         raise SystemExit(str(error)) from error
-    _report(result, first_ms, timings, samples)
+    _report(result, first_ms, timings, proof)
     return 0
 
 
@@ -108,7 +110,7 @@ def _timed_reads(engine, rgb, repeats: int):
     return result, first_ms, timings
 
 
-def _report(result, first_ms: float, timings: list[float], samples) -> None:
+def _report(result, first_ms: float, timings: list[float], proof: ProofResult) -> None:
     """Say what was read, how fast, and which silicon was busy doing it."""
     if timings:
         print(
@@ -130,13 +132,15 @@ def _report(result, first_ms: float, timings: list[float], samples) -> None:
     if result.filtered_regions:
         print(f"{result.filtered_regions} recognised regions were filtered as known noise")
 
-    print("\nGPU busy while reading (sysfs gpu_busy_percent):")
-    for path, values in samples.items():
-        if values:
-            print(
-                f"  {path.parent.parent.name}: max {max(values)}%  "
-                f"mean {statistics.fmean(values):.1f}%  samples {len(values)}"
-            )
+    if not proof.supported:
+        print(f"\nGPU telemetry unavailable: {proof.unavailable_reason}")
+        return
+    values = [sample.value for sample in proof.matching_samples]
+    print(f"\nGPU activity ({proof.provider}, {proof.scope}-wide):")
+    print(
+        f"  max {max(values):.0f}%  mean {statistics.fmean(values):.1f}%  "
+        f"samples {len(values)}"
+    )
 
 
 if __name__ == "__main__":

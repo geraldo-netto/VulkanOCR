@@ -98,9 +98,10 @@ git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, 
 it with a quantized model profile.
 
 The command prints the device it chose, the lines with their coordinates and
-confidence, and the GPU's `gpu_busy_percent` while it works — so "it ran on
-the GPU" is observable rather than asserted. For the same claim measured per
-process, `benchmarks/gpu_proof.py` reads this process's own amdgpu counters.
+confidence, and attributable GPU telemetry while it works. Drivers without a
+usable counter print an explicit `GPU telemetry unavailable` reason instead
+of an empty section. The AMD `gpu_busy_percent` source is system-wide; the
+per-process provider is described in [the benchmark notes](docs/benchmarks.md).
 
 ## Accuracy notes
 

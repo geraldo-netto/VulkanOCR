@@ -2,7 +2,14 @@
 
 import time
 
-from vulkanocr.proof import ProofDevice, ProofResult, ProofSample, busy_sampler
+from vulkanocr.device import VulkanDevice
+from vulkanocr.proof import (
+    ProofDevice,
+    ProofResult,
+    ProofSample,
+    busy_sampler,
+    system_busy_result,
+)
 
 
 def test_the_sampler_collects_while_the_block_runs_and_stops_after(tmp_path):
@@ -58,3 +65,28 @@ def test_unsupported_result_requires_an_explicit_reason():
 
     assert result.supported is False
     assert result.unavailable_reason == "driver exposes no telemetry counter"
+
+
+def test_missing_busy_counter_returns_explicit_unavailable_state():
+    device = VulkanDevice(0, "Intel Arc", 0, 0x8086, 0x56A0)
+
+    result = system_busy_result((device,), {})
+
+    assert result.supported is False
+    assert result.samples == ()
+    assert result.unavailable_reason == "selected device exposes no gpu_busy_percent counter"
+
+
+def test_busy_counter_for_another_device_cannot_count_as_selected_activity(tmp_path):
+    counter = tmp_path / "card0/device/gpu_busy_percent"
+    counter.parent.mkdir(parents=True)
+    counter.write_text("91\n")
+    (counter.parent / "vendor").write_text("0x1002\n")
+    (counter.parent / "device").write_text("0x164e\n")
+    selected = VulkanDevice(1, "RX 6600 XT", 0, 0x1002, 0x73FF)
+
+    result = system_busy_result((selected,), {counter: [91]})
+
+    assert result.supported is False
+    assert result.activity_observed is False
+    assert result.unavailable_reason == "no gpu_busy_percent counter matches the selected device"

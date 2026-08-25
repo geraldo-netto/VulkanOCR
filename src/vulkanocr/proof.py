@@ -89,6 +89,91 @@ def gpu_busy_paths() -> list[Path]:
     return sorted(Path("/sys/class/drm").glob("card*/device/gpu_busy_percent"))
 
 
+def _hex_attribute(path: Path, name: str) -> int | None:
+    try:
+        return int((path.parent / name).read_text().strip(), 16)
+    except (OSError, ValueError):
+        return None
+
+
+def _busy_device(path: Path) -> ProofDevice:
+    node = path.parent.parent.name
+    return ProofDevice(
+        runtime_index=None,
+        name=node,
+        vendor_id=_hex_attribute(path, "vendor"),
+        device_id=_hex_attribute(path, "device"),
+        drm_node=node,
+    )
+
+
+def system_busy_result(
+    devices: Sequence[VulkanDevice], samples: dict[Path, list[int]]
+) -> ProofResult:
+    """Convert AMD's system-wide counter samples into attributable state."""
+    selected = tuple(ProofDevice.from_vulkan(device) for device in devices)
+    if not samples:
+        return ProofResult(
+            provider="amd-gpu-busy-percent",
+            scope="system",
+            selected_devices=selected,
+            samples=(),
+            supported=False,
+            unavailable_reason="selected device exposes no gpu_busy_percent counter",
+        )
+    proof_samples = tuple(
+        ProofSample(_busy_device(path), "gpu_busy_percent", value)
+        for path, values in samples.items()
+        for value in values
+    )
+    candidate = ProofResult(
+        provider="amd-gpu-busy-percent",
+        scope="system",
+        selected_devices=selected,
+        samples=proof_samples,
+        supported=True,
+    )
+    if not candidate.matching_samples:
+        return ProofResult(
+            provider=candidate.provider,
+            scope=candidate.scope,
+            selected_devices=selected,
+            samples=proof_samples,
+            supported=False,
+            unavailable_reason="no gpu_busy_percent counter matches the selected device",
+        )
+    if _has_ambiguous_pci_identity(selected, proof_samples):
+        return ProofResult(
+            provider=candidate.provider,
+            scope=candidate.scope,
+            selected_devices=selected,
+            samples=proof_samples,
+            supported=False,
+            unavailable_reason="multiple DRM devices share the selected PCI identity",
+        )
+    return candidate
+
+
+def _has_ambiguous_pci_identity(
+    selected: tuple[ProofDevice, ...], samples: tuple[ProofSample, ...]
+) -> bool:
+    for device in selected:
+        identity = (device.vendor_id, device.device_id)
+        if None in identity:
+            continue
+        selected_count = sum(
+            (item.vendor_id, item.device_id) == identity for item in selected
+        )
+        nodes = {
+            sample.device.drm_node
+            for sample in samples
+            if (sample.device.vendor_id, sample.device.device_id) == identity
+        }
+        if len(nodes) > selected_count:
+            return True
+    return False
+
+
 def _sample(stop: threading.Event, samples: dict[Path, list[int]]) -> None:
     paths = list(samples)
     while not stop.is_set():
@@ -123,4 +208,5 @@ __all__ = [
     "ProofScope",
     "busy_sampler",
     "gpu_busy_paths",
+    "system_busy_result",
 ]
