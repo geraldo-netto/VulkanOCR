@@ -57,9 +57,20 @@ class TestScore:
         assert result["cer"] >= 0.0
         assert result["exact"] is False
 
-    def test_ordered_line_sequences_keep_existing_score_arithmetic(self):
+    def test_line_assignment_excludes_traversal_order(self):
         assert score_lines(["first line", "second line"], ["first line", "second line"])["exact"]
-        assert score_lines(["first line", "second line"], ["second line", "first line"])["cer"] > 0
+        reordered = score_lines(["first line", "second line"], ["second line", "first line"])
+        assert reordered["cer"] == 0
+        assert reordered["wer"] == 0
+        assert reordered["exact"] is True
+
+    def test_line_assignment_preserves_total_truth_denominators(self):
+        result = score_lines(["ab", "c"], ["ax"])
+        assert result["char_distance"] == 2
+        assert result["char_length"] == 3
+        assert result["cer"] == pytest.approx(2 / 3)
+        assert result["word_distance"] == 2
+        assert result["word_length"] == 2
 
 
 class TestLoadRgb:
