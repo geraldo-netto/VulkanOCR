@@ -14,7 +14,6 @@
 | VOCR-0082 | open | low | xs | Restore documentation consistency: link active gaps to `TODO.md` instead of the historical `docs/findings.md`, and remove or update stale claims of 74 tests now that the suite collects 76. |
 | VOCR-0093 | open | medium | s | Add configurable font discovery with script-coverage checks and record each corpus font's source, version, and redistribution licence. |
 | VOCR-0104 | open | medium | s | Replace `ParallelOcr` tests that allocate with `__new__` and overwrite private concrete fields with protocol-backed fakes using normal construction. |
-| VOCR-0106 | open | medium | s | Validate recognition inference output rank and timestep/class dimensions before CTC decoding, with stable errors for incompatible model ports. |
 | VOCR-0107 | open | medium | s | Translate ncnn input/extract exceptions and return codes to stage-specific `OcrEngineError` values and make the CLI catch errors raised during reads. |
 | VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |
 | VOCR-0117 | open | medium | s | Add per-process DRM fdinfo proof where supported and retain AMD `gpu_busy_percent` as an explicitly system-wide fallback. |

@@ -67,3 +67,28 @@ def test_the_wrong_offset_shifts_every_character():
     assert right == "ace"
     with pytest.raises(CtcDictionaryMismatchError, match="expects 7"):
         decode_ctc(steps, characters, offset=1)
+
+
+class TestRecognizerOutputContract:
+    @pytest.mark.parametrize("shape", [(7, 20), (1, 7, 20)])
+    def test_supported_outputs_resolve_to_a_logit_matrix(self, shape):
+        from vulkanocr.recognition import _logit_matrix
+
+        assert _logit_matrix(np.zeros(shape, dtype=np.float32)).shape == (7, 20)
+
+    @pytest.mark.parametrize(
+        "shape",
+        [
+            pytest.param((20,), id="rank-one"),
+            pytest.param((1, 1, 7, 20), id="rank-four"),
+            pytest.param((2, 7, 20), id="batch"),
+            pytest.param((0, 20), id="no-timesteps"),
+            pytest.param((7, 0), id="no-classes"),
+            pytest.param((7, 1), id="blank-only"),
+        ],
+    )
+    def test_incompatible_logit_shapes_are_refused(self, shape):
+        from vulkanocr.recognition import RecognitionOutputError, _logit_matrix
+
+        with pytest.raises(RecognitionOutputError, match="recognition output"):
+            _logit_matrix(np.zeros(shape, dtype=np.float32))

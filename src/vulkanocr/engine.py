@@ -17,7 +17,13 @@ from .detection import DetectionOutputError, detect_regions
 from .device import select_hardware_device
 from .options import InferenceOptions, Precision
 from .orientation import classify_patch_orientation, rotate_patch
-from .recognition import CtcDictionaryMismatchError, crop_region, decode_ctc, patch_logits
+from .recognition import (
+    CtcDictionaryMismatchError,
+    RecognitionOutputError,
+    crop_region,
+    decode_ctc,
+    patch_logits,
+)
 
 DEFAULT_TARGET_SIZE = 640
 
@@ -304,12 +310,15 @@ class OcrEngine:
             raise OcrEngineError(
                 "net-unloaded", "this engine was built without the recognition net"
             )
-        return patch_logits(
-            self._runtime,
-            self._rec,
-            patch,
-            self._models.resolved_recognizer_blobs,
-        )
+        try:
+            return patch_logits(
+                self._runtime,
+                self._rec,
+                patch,
+                self._models.resolved_recognizer_blobs,
+            )
+        except RecognitionOutputError as error:
+            raise OcrEngineError("recognition-output-invalid", str(error)) from error
 
     def decode(self, logits: np.ndarray) -> tuple[str, float]:
         """Greedy-decode a logits slice with this engine's dictionary and offset."""

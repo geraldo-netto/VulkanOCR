@@ -21,6 +21,10 @@ class CtcDictionaryMismatchError(ValueError):
     """Recognition output classes disagree with the selected dictionary."""
 
 
+class RecognitionOutputError(ValueError):
+    """The recognizer returned a tensor that is not a CTC logit matrix."""
+
+
 def crop_region(rgb: np.ndarray, region) -> np.ndarray:
     """Affine-rectify one oriented region to a horizontal 48-high patch."""
     target_width = max(int(region.height * TARGET_HEIGHT / max(region.width, 1e-6)), 1)
@@ -56,8 +60,30 @@ def patch_logits(
         np.ascontiguousarray(patch), runtime.Mat.PixelType.PIXEL_RGB2BGR, width, height
     )
     mat.substract_mean_normalize(MEAN, NORM)
-    logits = np.array(extract_output(net, mat, blobs, stage="recognition"))
-    return logits[0] if logits.ndim == 3 else logits
+    output = extract_output(net, mat, blobs, stage="recognition")
+    return _logit_matrix(output)
+
+
+def _logit_matrix(output) -> np.ndarray:
+    """Validate and unwrap a recognizer output to ``timesteps x classes``."""
+    tensor = np.asarray(output)
+    if tensor.ndim == 3:
+        if tensor.shape[0] != 1:
+            raise RecognitionOutputError(
+                f"recognition output has shape {tensor.shape}; expected singleton batch"
+            )
+        tensor = tensor[0]
+    if tensor.ndim != 2:
+        raise RecognitionOutputError(
+            f"recognition output has rank {tensor.ndim}; expected rank 2 or 3"
+        )
+    timesteps, classes = tensor.shape
+    if timesteps < 1 or classes < 2:
+        raise RecognitionOutputError(
+            f"recognition output has shape {tensor.shape}; "
+            "expected at least 1 timestep and 2 classes"
+        )
+    return tensor
 
 
 def recognise_patch(

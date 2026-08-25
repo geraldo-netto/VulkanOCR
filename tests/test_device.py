@@ -313,6 +313,21 @@ class TestEngineInputValidation:
         assert caught.value.code == "detection-output-invalid"
         assert caught.value.detail == "detection output has shape (4,)"
 
+    def test_invalid_recognition_output_is_a_stable_refusal(self, tmp_path, monkeypatch):
+        from vulkanocr.engine import OcrEngineError
+        from vulkanocr.recognition import RecognitionOutputError
+
+        def incompatible_output(*_args):
+            raise RecognitionOutputError("recognition output has rank 1")
+
+        monkeypatch.setattr("vulkanocr.engine.patch_logits", incompatible_output)
+        patch = np.zeros((48, 8, 3), dtype=np.uint8)
+        with self.engine(tmp_path) as engine, pytest.raises(OcrEngineError) as caught:
+            engine.logits(patch)
+
+        assert caught.value.code == "recognition-output-invalid"
+        assert caught.value.detail == "recognition output has rank 1"
+
 
 class TestInferenceOptionsAreApplied:
     _PRECISION_FIELDS = (
