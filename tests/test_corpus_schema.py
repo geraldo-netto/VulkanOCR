@@ -81,3 +81,7 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     assert greek["script"] == "Grek"
     assert "ΐ, ΰ" in greek["lines"][1]
     assert (tmp_path / greek["image"]).is_file()
+    japanese = next(case for case in document["cases"] if case["language"] == "ja")
+    assert japanese["script"] == "Jpan"
+    assert "ひらがな、カタカナ、漢字" in japanese["lines"][0]
+    assert (tmp_path / japanese["image"]).is_file()

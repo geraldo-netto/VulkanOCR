@@ -114,6 +114,23 @@ SCRIPT_DOCUMENTS = [
             "license": NOTO_LICENSE,
         },
     },
+    {
+        "id": "japanese-clean",
+        "script": "Jpan",
+        "language": "ja",
+        "direction": "ltr",
+        "lines": [
+            "ひらがな、カタカナ、漢字を一緒に読みます。",
+            "東京でコンピューターとOCRを試験中！「日本語」",
+        ],
+        "font_path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "font_index": 0,
+        "font": {
+            "family": "Noto Sans CJK JP",
+            "file": "NotoSansCJK-Regular.ttc#0",
+            "license": NOTO_LICENSE,
+        },
+    },
 ]
 
 
