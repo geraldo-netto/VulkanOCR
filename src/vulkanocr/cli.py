@@ -26,6 +26,13 @@ from vulkanocr.engine import OcrEngineError
 from vulkanocr.proof import busy_sampler
 
 
+def _non_negative_int(value: str) -> int:
+    number = int(value)
+    if number < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return number
+
+
 def _reader(arguments):
     """The engine the flags ask for: one device, or one process per device."""
     options = options_for_precision(arguments.precision)
@@ -41,7 +48,7 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("image")
     parser.add_argument(
         "--repeat",
-        type=int,
+        type=_non_negative_int,
         default=0,
         help="extra timed passes for benchmarking (default: none — one read answers)",
     )

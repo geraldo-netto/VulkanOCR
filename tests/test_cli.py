@@ -15,6 +15,11 @@ def test_precision_defaults_to_fp32():
     assert arguments.precision == "fp32"
 
 
+def test_negative_repeat_is_refused():
+    with pytest.raises(SystemExit):
+        cli._arguments(["page.png", "--repeat", "-1"])
+
+
 def test_precision_choice_reaches_the_single_engine(monkeypatch):
     received = []
     monkeypatch.setattr(cli, "models_for", lambda _name: object())
