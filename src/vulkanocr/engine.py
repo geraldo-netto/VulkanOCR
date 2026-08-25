@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 
 from .detection import DetectionOutputError, detect_regions
-from .device import select_hardware_device
+from .device import VulkanDevice, select_hardware_device
 from .inference import NcnnInferenceError
 from .options import InferenceOptions, Precision
 from .orientation import classify_patch_orientation, rotate_patch
@@ -237,6 +237,11 @@ class OcrEngine:
     @property
     def device_name(self) -> str:
         return self._device.name
+
+    @property
+    def devices(self) -> tuple[VulkanDevice, ...]:
+        """Selected runtime devices, for attributable telemetry providers."""
+        return (self._device,)
 
     def close(self) -> None:
         """Release every loaded net and its Vulkan allocations.

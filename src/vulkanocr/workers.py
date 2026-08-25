@@ -63,6 +63,9 @@ class WorkerFleet(Protocol):
     def device_names(self) -> tuple[str, ...]: ...
 
     @property
+    def devices(self) -> tuple[VulkanDevice, ...]: ...
+
+    @property
     def costs(self) -> dict[int, float]: ...
 
     def send(
@@ -187,6 +190,10 @@ class MultiprocessingWorkerFleet:
     @property
     def device_names(self) -> tuple[str, ...]:
         return tuple(self._names[index] for index in sorted(self._names))
+
+    @property
+    def devices(self) -> tuple[VulkanDevice, ...]:
+        return tuple(self._devices[index] for index in sorted(self._names))
 
     @property
     def costs(self) -> dict[int, float]:

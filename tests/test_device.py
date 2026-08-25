@@ -9,15 +9,23 @@ from vulkanocr.device import HardwareVulkanUnavailableError, select_hardware_dev
 
 
 class FakeInfo:
-    def __init__(self, name, kind):
+    def __init__(self, name, kind, vendor_id=None, device_id=None):
         self._name = name
         self._kind = kind
+        self._vendor_id = vendor_id
+        self._device_id = device_id
 
     def device_name(self):
         return self._name
 
     def type(self):
         return self._kind
+
+    def vendor_id(self):
+        return self._vendor_id
+
+    def device_id(self):
+        return self._device_id
 
 
 class FakeRuntime:
@@ -39,6 +47,14 @@ def test_discrete_wins_over_integrated_regardless_of_order():
     runtime = FakeRuntime([FakeInfo("iGPU", 1), FakeInfo("dGPU", 0)])
     device = select_hardware_device(runtime)
     assert (device.index, device.name, device.kind) == (1, "dGPU", 0)
+
+
+def test_device_identity_includes_runtime_pci_ids_when_available():
+    info = FakeInfo("dGPU", 0, vendor_id=0x1002, device_id=0x73FF)
+
+    device = select_hardware_device(FakeRuntime([info]))
+
+    assert (device.vendor_id, device.device_id) == (0x1002, 0x73FF)
 
 
 def test_the_software_rasteriser_is_never_selected():

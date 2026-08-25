@@ -7,7 +7,6 @@
 | VOCR-0076 | open | medium | s | Return and print an explicit telemetry-unavailable proof state instead of an empty `gpu_busy_percent` section on drivers without that counter. |
 | VOCR-0079 | open | medium | xs | Define and document a geometry-based word-gap heuristic, including punctuation and right-to-left behavior, before adding whitespace postprocessing. |
 | VOCR-0080 | open | low | s | Unify benchmark engine lifecycle and no-text precondition handling in a shared harness; several scripts manually close resources only on success, while batching scripts crash on blank images through `min`, division by zero, or a zero range step. |
-| VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |
 | VOCR-0117 | open | medium | s | Add per-process DRM fdinfo proof where supported and retain AMD `gpu_busy_percent` as an explicitly system-wide fallback. |
 | VOCR-0118 | open | medium | s | Add fake AMD, Intel, NVIDIA, missing-counter, and wrong-device proof tests plus CLI documentation for each telemetry state. |
 | VOCR-0124 | open | medium | s | Add a whitespace-reconstruction stage over recognised regions using the approved gap heuristic without changing CTC decoding. |

@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from vulkanocr.detection import TextRegion
+from vulkanocr.device import VulkanDevice
 from vulkanocr.engine import OcrModels
 from vulkanocr.parallel import ParallelOcr, PrimaryEngine
 from vulkanocr.policy import FalsePositivePolicy, RecognitionContext
@@ -22,6 +23,9 @@ class FakeFleet:
         self._costs = dict(costs)
         self._replies = list(replies)
         self._names = names or {index: f"GPU {index}" for index in costs}
+        self._devices = {
+            index: VulkanDevice(index, name, 0) for index, name in self._names.items()
+        }
         self.sent = {index: [] for index in costs}
         self.closed = False
 
@@ -32,6 +36,10 @@ class FakeFleet:
     @property
     def device_names(self):
         return tuple(self._names[index] for index in sorted(self._names))
+
+    @property
+    def devices(self):
+        return tuple(self._devices[index] for index in sorted(self._names))
 
     @property
     def costs(self):
@@ -52,6 +60,7 @@ class FakeFleet:
 
 class FakePrimary:
     device_name = "Fast GPU"
+    devices = (VulkanDevice(0, "Fast GPU", 0),)
 
     def __init__(self, pairs: list[tuple], result: tuple[str, float] = ("fallback", 0.9)):
         self.pairs = pairs
@@ -224,6 +233,7 @@ def test_one_device_builds_no_worker_fleet(monkeypatch):
 
     class FakeEngine:
         device_name = "Only GPU"
+        devices = (VulkanDevice(0, "Only GPU", 0),)
 
         def __init__(self, *_args, **_kwargs):
             self.closed = False
@@ -272,6 +282,7 @@ def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
 
     class FakeEngine:
         device_name = "Fast GPU"
+        devices = (VulkanDevice(0, "Fast GPU", 0),)
 
         def close(self):
             return None
@@ -324,6 +335,7 @@ def test_detection_parent_and_lazy_fallback_release_every_loaded_net():
 
     class RecordingEngine:
         device_name = "Fast GPU"
+        devices = (VulkanDevice(0, "Fast GPU", 0),)
 
         def __init__(self, *_args, nets, **_kwargs):
             self.nets = nets

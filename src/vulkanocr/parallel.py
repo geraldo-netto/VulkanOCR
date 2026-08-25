@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 import numpy as np
 
-from .device import hardware_devices
+from .device import VulkanDevice, hardware_devices
 from .engine import OcrEngine, OcrEngineError, OcrModels, OcrResult, assemble_result
 from .options import InferenceOptions
 from .policy import FalsePositivePolicy, RecognitionContext
@@ -19,6 +19,9 @@ from .workers import MultiprocessingWorkerFleet, WorkerFleet
 class PrimaryEngine(Protocol):
     @property
     def device_name(self) -> str: ...
+
+    @property
+    def devices(self) -> tuple[VulkanDevice, ...]: ...
 
     def crops(self, rgb: np.ndarray) -> list[tuple]: ...
 
@@ -154,6 +157,12 @@ class ParallelOcr:
         if self._fleet is None:
             return (self._primary.device_name,)
         return self._fleet.device_names
+
+    @property
+    def devices(self) -> tuple[VulkanDevice, ...]:
+        if self._fleet is None:
+            return self._primary.devices
+        return self._fleet.devices
 
     @property
     def device_name(self) -> str:
