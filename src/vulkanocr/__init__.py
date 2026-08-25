@@ -29,12 +29,14 @@ from .catalog import (
 from .device import HardwareVulkanUnavailableError, select_hardware_device
 from .engine import OcrEngine, OcrEngineError, OcrLine, OcrModels, OcrResult
 from .options import PRECISIONS, InferenceOptions, Precision, options_for_precision
+from .policy import FalsePositivePolicy, RecognitionContext
 
 __all__ = [
     "CATALOG",
     "DEFAULT_MODEL",
     "DETECTORS",
     "DetectorSpec",
+    "FalsePositivePolicy",
     "HardwareVulkanUnavailableError",
     "InferenceOptions",
     "ModelProfile",
@@ -46,6 +48,7 @@ __all__ = [
     "PRECISIONS",
     "Precision",
     "RECOGNIZERS",
+    "RecognitionContext",
     "RecognizerSpec",
     "models_for",
     "models_for_port",
