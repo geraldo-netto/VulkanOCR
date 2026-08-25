@@ -9,6 +9,7 @@ size, font, contrast, blur, noise, JPEG, skew, and dense UI text.
 
 from __future__ import annotations
 
+import argparse
 import math
 import pathlib
 import sys
@@ -367,6 +368,33 @@ ORIENTATION_DOCUMENT = {
 }
 
 
+class CorpusWriter:
+    """Write one corpus without ever reporting a missing image as success."""
+
+    def __init__(self, output: pathlib.Path):
+        self.output = output
+        self.cases: list[dict] = []
+        output.mkdir(parents=True, exist_ok=True)
+
+    def add(self, case: dict, rgb: np.ndarray) -> None:
+        path = self.output / case["image"]
+        if not cv2.imwrite(str(path), rgb[:, :, ::-1]):
+            raise OSError(f"cannot write corpus image: {path}")
+        self.cases.append(case)
+
+    def finish(self) -> None:
+        write_manifest(
+            self.output / "ground-truth.json",
+            {"schema_version": SCHEMA_VERSION, "cases": self.cases},
+        )
+
+
+def _validate_font_paths(paths) -> None:
+    missing = sorted({str(path) for path in paths if not pathlib.Path(path).is_file()})
+    if missing:
+        raise FileNotFoundError(f"configured corpus fonts not found: {', '.join(missing)}")
+
+
 def render(lines, font_path, size, width=900, pad=24):
     font = ImageFont.truetype(font_path, size)
     height = pad * 2 + int(size * 1.6) * len(lines)
@@ -464,8 +492,9 @@ def _decorate_sample(
 
 
 def make_script_samples(output: pathlib.Path) -> int:
-    output.mkdir(parents=True, exist_ok=True)
-    cases = []
+    documents = [*SCRIPT_DOCUMENTS, *ALTERNATE_FONTS.values()]
+    _validate_font_paths(document["font_path"] for document in documents)
+    writer = CorpusWriter(output)
     for document in SCRIPT_DOCUMENTS:
         for variant in SAMPLE_VARIANTS:
             font_document = _font_document(document, variant["font_role"])
@@ -478,9 +507,8 @@ def make_script_samples(output: pathlib.Path) -> int:
             if variant["suffix"] != "clean":
                 case_id = f"{case_id.removesuffix('-clean')}-{variant['suffix']}"
             image = f"{case_id}.png"
-            cv2.imwrite(str(output / image), array[:, :, ::-1])
             height, width = array.shape[:2]
-            cases.append(
+            writer.add(
                 {
                     "id": case_id,
                     "script": document["script"],
@@ -498,28 +526,25 @@ def make_script_samples(output: pathlib.Path) -> int:
                     "recognition": SCRIPT_RECOGNITION[document["language"]],
                     "variant": variant["name"],
                     "image": image,
-                }
+                },
+                array,
             )
-    write_manifest(
-        output / "ground-truth.json",
-        {"schema_version": SCHEMA_VERSION, "cases": cases},
-    )
-    print(f"{len(cases)} committed script samples -> {output}")
+    writer.finish()
+    print(f"{len(writer.cases)} committed script samples -> {output}")
     return 0
 
 
 def make_orientation_samples(output: pathlib.Path) -> int:
     """Four cardinal page rotations for end-to-end orientation acceptance."""
-    output.mkdir(parents=True, exist_ok=True)
+    _validate_font_paths([ORIENTATION_DOCUMENT["font_path"]])
+    writer = CorpusWriter(output)
     base = render_script_document(ORIENTATION_DOCUMENT, font_px=36, pad=48)
-    cases = []
     for degrees, quarter_turns in ((0, 0), (90, 3), (180, 2), (270, 1)):
         array = np.rot90(base, quarter_turns).copy()
         case_id = f"orientation-{degrees:03d}deg"
         image = f"{case_id}.png"
-        cv2.imwrite(str(output / image), array[:, :, ::-1])
         height, width = array.shape[:2]
-        cases.append(
+        writer.add(
             {
                 "id": case_id,
                 "script": ORIENTATION_DOCUMENT["script"],
@@ -533,13 +558,11 @@ def make_orientation_samples(output: pathlib.Path) -> int:
                 "recognition": BENCHMARK_RECOGNITION["en"],
                 "variant": f"orientation-{degrees}deg",
                 "image": image,
-            }
+            },
+            array,
         )
-    write_manifest(
-        output / "ground-truth.json",
-        {"schema_version": SCHEMA_VERSION, "cases": cases},
-    )
-    print(f"{len(cases)} orientation samples -> {output}")
+    writer.finish()
+    print(f"{len(writer.cases)} orientation samples -> {output}")
     return 0
 
 
@@ -579,11 +602,10 @@ def faded(array, factor):
     return np.clip(255 - (255 - array.astype(np.float32)) * factor, 0, 255).astype(np.uint8)
 
 
-def main(output: pathlib.Path | None = None) -> int:
-    output = output or pathlib.Path(sys.argv[1])
-    output.mkdir(parents=True, exist_ok=True)
+def make_benchmark_samples(output: pathlib.Path) -> int:
+    _validate_font_paths(FONTS.values())
+    writer = CorpusWriter(output)
 
-    cases = []
     for index, document in enumerate(DOCUMENTS):
         lines = document["lines"]
         base = render(lines, FONTS["sans"], 28)
@@ -603,10 +625,9 @@ def main(output: pathlib.Path | None = None) -> int:
         for name, (array, font_key, font_px) in variants.items():
             stem = f"case{index:02d}-{name}"
             image = f"{stem}.png"
-            cv2.imwrite(str(output / image), array[:, :, ::-1])
             family, font_file = FONT_FACTS[font_key]
             height, width = array.shape[:2]
-            cases.append(
+            writer.add(
                 {
                     "id": stem,
                     "script": document["script"],
@@ -624,20 +645,35 @@ def main(output: pathlib.Path | None = None) -> int:
                     "recognition": BENCHMARK_RECOGNITION[document["language"]],
                     "variant": name,
                     "image": image,
-                }
+                },
+                array,
             )
 
-    write_manifest(
-        output / "ground-truth.json",
-        {"schema_version": SCHEMA_VERSION, "cases": cases},
-    )
-    print(f"{len(cases)} images, {len(DOCUMENTS)} texts x 11 variants -> {output}")
+    writer.finish()
+    print(f"{len(writer.cases)} images, {len(DOCUMENTS)} texts x 11 variants -> {output}")
     return 0
 
 
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("output", nargs="?", type=pathlib.Path)
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--script-samples", type=pathlib.Path, metavar="OUTPUT")
+    modes.add_argument("--orientation-samples", type=pathlib.Path, metavar="OUTPUT")
+    arguments = parser.parse_args(argv)
+    selected = [
+        output
+        for output in (arguments.output, arguments.script_samples, arguments.orientation_samples)
+        if output is not None
+    ]
+    if len(selected) != 1:
+        parser.error("provide exactly one output path or sample mode")
+    if arguments.script_samples is not None:
+        return make_script_samples(arguments.script_samples)
+    if arguments.orientation_samples is not None:
+        return make_orientation_samples(arguments.orientation_samples)
+    return make_benchmark_samples(arguments.output)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "--script-samples":
-        sys.exit(make_script_samples(pathlib.Path(sys.argv[2])))
-    if len(sys.argv) == 3 and sys.argv[1] == "--orientation-samples":
-        sys.exit(make_orientation_samples(pathlib.Path(sys.argv[2])))
     sys.exit(main())

@@ -4,6 +4,7 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image, ImageColor
 
@@ -13,6 +14,8 @@ from corpus_schema import (  # noqa: E402, I001
     require_engine_selections,
     validate_manifest,
 )
+import make_corpus as corpus_generator  # noqa: E402, I001
+from make_corpus import CorpusWriter  # noqa: E402, I001
 from make_corpus import main as make_corpus  # noqa: E402, I001
 from make_corpus import make_orientation_samples  # noqa: E402, I001
 from make_corpus import make_script_samples  # noqa: E402, I001
@@ -78,12 +81,37 @@ def test_runner_refuses_cases_without_its_declared_model():
 
 
 def test_generator_writes_a_schema_valid_manifest(tmp_path):
-    assert make_corpus(tmp_path) == 0
+    assert make_corpus([str(tmp_path)]) == 0
 
     document = load_manifest(tmp_path / "ground-truth.json")
     validate_manifest(document)
     assert len(document["cases"]) == 55
     assert all((tmp_path / case["image"]).is_file() for case in document["cases"])
+
+
+def test_main_requires_an_output_path():
+    with pytest.raises(SystemExit):
+        make_corpus([])
+
+
+def test_writer_refuses_a_failed_image_write(tmp_path, monkeypatch):
+    writer = CorpusWriter(tmp_path)
+    monkeypatch.setattr(corpus_generator.cv2, "imwrite", lambda *_args: False)
+
+    with pytest.raises(OSError, match="cannot write corpus image"):
+        writer.add(_case(), np.zeros((2, 2, 3), dtype=np.uint8))
+
+    assert writer.cases == []
+    assert not (tmp_path / "ground-truth.json").exists()
+
+
+def test_generator_validates_fonts_before_writing(tmp_path, monkeypatch):
+    monkeypatch.setitem(corpus_generator.FONTS, "sans", str(tmp_path / "missing.ttf"))
+
+    with pytest.raises(FileNotFoundError, match="missing.ttf"):
+        make_corpus([str(tmp_path / "corpus")])
+
+    assert not (tmp_path / "corpus").exists()
 
 
 def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
