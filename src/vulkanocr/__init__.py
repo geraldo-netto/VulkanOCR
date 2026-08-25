@@ -18,11 +18,13 @@ decode — for callers that time or compose them separately.
 from .catalog import CATALOG, DEFAULT_MODEL, models_for, models_for_port
 from .device import HardwareVulkanUnavailableError, select_hardware_device
 from .engine import OcrEngine, OcrEngineError, OcrLine, OcrModels, OcrResult
+from .options import InferenceOptions
 
 __all__ = [
     "CATALOG",
     "DEFAULT_MODEL",
     "HardwareVulkanUnavailableError",
+    "InferenceOptions",
     "OcrEngine",
     "OcrEngineError",
     "OcrLine",

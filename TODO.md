@@ -5,7 +5,6 @@
 | id | status | severity | effort | description |
 | --- | --- | --- | --- | --- |
 | VOCR-0062 | open | high | s | Define a versioned corpus-case schema carrying script, language, exact lines, font and licence, palette, size, background objects, variant, and image path; validate every generated manifest against it. |
-| VOCR-0063 | open | high | s | Introduce an immutable inference-options value that states fp16 and ncnn int8 inference, packing, storage, and arithmetic policy explicitly instead of inheriting runtime defaults. |
 | VOCR-0064 | open | medium | s | Add independent immutable detector and recognizer specifications with their own paths, blob names, dictionary convention, and precision requirements. |
 | VOCR-0065 | open | high | s | Extract crop assignment and device repricing from `ParallelOcr._dispatch` into a pure scheduling policy with no queues, processes, ncnn objects, or OCR assembly. |
 | VOCR-0066 | open | medium | s | Extract detector and recognizer extractor creation, input submission, output extraction, and cleanup into one checked ncnn inference helper. |
