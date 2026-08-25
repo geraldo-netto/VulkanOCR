@@ -54,7 +54,7 @@ def detect_regions(
     ``in0``/``out0``, the Avafly PP-OCRv6 ports use ``input``/``output``.
     """
     image_height, image_width = rgb.shape[:2]
-    width, height, scale = _scaled(image_width, image_height, target_size)
+    width, height, _scale = _scaled(image_width, image_height, target_size)
     # Each axis maps back through the ratio it was actually resized by. The
     # minor axis is truncated to an integer above, so its true ratio differs
     # from `scale`; mapping y through the x ratio drifted boxes ~5 px on a
@@ -95,7 +95,7 @@ def detect_regions(
     finally:
         del extractor
 
-    return _regions(probability, scale, scale_x, scale_y, wpad, hpad)
+    return _regions(probability, scale_x, scale_y, wpad, hpad)
 
 
 def _scaled(width: int, height: int, target_size: int) -> tuple[int, int, float]:
@@ -111,7 +111,6 @@ def _scaled(width: int, height: int, target_size: int) -> tuple[int, int, float]
 
 def _regions(
     probability: np.ndarray,
-    scale: float,
     scale_x: float,
     scale_y: float,
     wpad: int,
@@ -130,8 +129,8 @@ def _regions(
         score = _contour_score(probability, contour)
         if score < BOX_THRESHOLD:
             continue
-        (cx, cy), (rw, rh), angle = cv2.minAreaRect(contour)
-        if max(rw, rh) < MIN_SIZE_FACTOR * scale:
+        (cx, cy), (rw, rh), angle = _original_rect(contour, scale_x, scale_y, wpad, hpad)
+        if max(rw, rh) < MIN_SIZE_FACTOR:
             continue
         rw, rh, angle, vertical = _oriented(rw, rh, angle)
         offset = unclip_offset(rw, rh)
@@ -139,16 +138,35 @@ def _regions(
         rh += 2.0 * offset
         regions.append(
             TextRegion(
-                center_x=(cx - wpad // 2) / scale_x,
-                center_y=(cy - hpad // 2) / scale_y,
-                width=rw / scale,
-                height=rh / scale,
+                center_x=cx,
+                center_y=cy,
+                width=rw,
+                height=rh,
                 angle=angle,
                 vertical=vertical,
                 score=score,
             )
         )
     return regions
+
+
+def _original_rect(
+    contour: np.ndarray,
+    scale_x: float,
+    scale_y: float,
+    wpad: int,
+    hpad: int,
+):
+    """Map a padded probability-map contour before fitting its rectangle.
+
+    Integer resize dimensions make the x and y ratios differ, sometimes
+    sharply for extreme aspect ratios. Mapping corners after fitting cannot
+    preserve angle or side lengths under that anisotropic transform.
+    """
+    original = np.asarray(contour, dtype=np.float32).copy()
+    original[..., 0] = (original[..., 0] - wpad // 2) / scale_x
+    original[..., 1] = (original[..., 1] - hpad // 2) / scale_y
+    return cv2.minAreaRect(original)
 
 
 def unclip_offset(short: float, long: float, ratio: float = UNCLIP_RATIO) -> float:

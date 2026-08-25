@@ -91,6 +91,25 @@ def test_each_axis_maps_back_through_its_own_ratio():
     assert abs(bottom_via_own - 3993.7) < 0.1  # its own ratio lands right
 
 
+def test_rectangle_geometry_is_fitted_after_anisotropic_mapping():
+    """A 10000x2 image resizes to 640x1, making x/y ratios 0.064/0.5."""
+    from vulkanocr.detection import _original_rect
+
+    contour = np.array([[[64, 15]], [[576, 15]], [[576, 16]], [[64, 16]]], np.float32)
+
+    (cx, cy), (side_a, side_b), _angle = _original_rect(
+        contour,
+        scale_x=640 / 10_000,
+        scale_y=1 / 2,
+        wpad=0,
+        hpad=31,
+    )
+
+    assert cx == pytest.approx(5000.0)
+    assert cy == pytest.approx(1.0)
+    assert sorted((side_a, side_b)) == pytest.approx([2.0, 8000.0])
+
+
 def test_a_trailing_newline_is_a_file_convention_not_a_character_class(tmp_path):
     """The Avafly clone's ppocr_keys_v5 ends with a newline; the nihui copy
     does not. Both must yield the same classes, and the final literal-space
