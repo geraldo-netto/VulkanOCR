@@ -41,6 +41,34 @@ def test_named_components_preserve_each_upstream_port_convention():
     assert RECOGNIZERS["v5-mobile-rec"].ctc_offset == 1
 
 
+def test_named_profiles_compose_components_without_copying_them():
+    from vulkanocr.catalog import DETECTORS, PROFILES, RECOGNIZERS
+
+    profile = PROFILES["v6-medium"]
+
+    assert profile.detector is DETECTORS["v6-medium-det"]
+    assert profile.recognizer is RECOGNIZERS["v6-medium-rec"]
+    assert profile.precision_requirements == frozenset()
+
+
+def test_a_quantized_recognizer_can_reuse_an_existing_detector():
+    from vulkanocr.catalog import DETECTORS, ModelProfile, RecognizerSpec
+
+    detector = DETECTORS["v6-tiny-det"]
+    quantized = RecognizerSpec(
+        "arabic-int8.param",
+        "arabic-keys.txt",
+        ("rec-in", "rec-out"),
+        dictionary_includes_blank=True,
+        required_precision="int8",
+    )
+    profile = ModelProfile(detector, quantized, "Arabic quantized recognizer")
+
+    assert profile.detector is detector
+    assert profile.recognizer is quantized
+    assert profile.precision_requirements == frozenset({"int8"})
+
+
 def test_the_default_is_the_current_generation():
     assert DEFAULT_MODEL == "v6-medium"
     assert models_for().blobs == ("input", "output")

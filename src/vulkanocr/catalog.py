@@ -115,6 +115,57 @@ RECOGNIZERS: dict[str, RecognizerSpec] = {
 
 
 @dataclass(frozen=True, slots=True)
+class ModelProfile:
+    """A named pairing of independently reusable inference components."""
+
+    detector: DetectorSpec
+    recognizer: RecognizerSpec
+    note: str
+    orientation: str | None = None
+    orientation_blobs: tuple[str, str] = ("input", "output")
+    orientation_labels: tuple[int, int] = (0, 180)
+
+    @property
+    def precision_requirements(self) -> frozenset[Precision]:
+        """Hard requirements contributed by either component."""
+        return frozenset(
+            required
+            for required in (
+                self.detector.required_precision,
+                self.recognizer.required_precision,
+            )
+            if required is not None
+        )
+
+
+PROFILES: dict[str, ModelProfile] = {
+    "v6-medium": ModelProfile(
+        DETECTORS["v6-medium-det"],
+        RECOGNIZERS["v6-medium-rec"],
+        "current generation, highest accuracy, ~1.0 s per page here",
+        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
+    ),
+    "v6-small": ModelProfile(
+        DETECTORS["v6-small-det"],
+        RECOGNIZERS["v6-small-rec"],
+        "balanced tier",
+        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
+    ),
+    "v6-tiny": ModelProfile(
+        DETECTORS["v6-tiny-det"],
+        RECOGNIZERS["v6-tiny-rec"],
+        "fastest tier, 49 languages, ~0.37 s per page here",
+        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
+    ),
+    "v5-mobile": ModelProfile(
+        DETECTORS["v5-mobile-det"],
+        RECOGNIZERS["v5-mobile-rec"],
+        "previous generation, kept for comparison",
+    ),
+}
+
+
+@dataclass(frozen=True, slots=True)
 class ModelSpec:
     """One installable model set, relative to a models root."""
 
