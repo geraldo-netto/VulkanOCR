@@ -257,3 +257,11 @@ class TestEngineInputValidation:
         with self.engine(tmp_path) as engine, pytest.raises(OcrEngineError) as caught:
             engine.recognise(patch)
         assert caught.value.code == "patch-invalid"
+
+    def test_model_dictionary_class_mismatch_is_a_stable_refusal(self, tmp_path):
+        from vulkanocr.engine import OcrEngineError
+
+        with self.engine(tmp_path) as engine, pytest.raises(OcrEngineError) as caught:
+            engine.decode(np.zeros((4, 5), dtype=np.float32))
+        assert caught.value.code == "dictionary-mismatch"
+        assert "5 classes" in caught.value.detail

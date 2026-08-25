@@ -10,7 +10,6 @@
 | VOCR-0065 | open | high | s | Extract crop assignment and device repricing from `ParallelOcr._dispatch` into a pure scheduling policy with no queues, processes, ncnn objects, or OCR assembly. |
 | VOCR-0066 | open | medium | s | Extract detector and recognizer extractor creation, input submission, output extraction, and cleanup into one checked ncnn inference helper. |
 | VOCR-0068 | open | high | s | Map each detected rectangle corner through independent x/y resize ratios and recompute its original-image rectangle; current scalar width/height/angle mapping badly distorts extreme aspect ratios such as 10000x2 resized to 640x1. |
-| VOCR-0069 | open | high | s | Validate recognition output class count against the selected dictionary and blank convention; `decode_ctc` currently skips out-of-range classes, hiding mismatched model/dictionary pairs as missing text. |
 | VOCR-0070 | open | high | s | Build the parent engine with only the detection net when a multi-GPU worker fleet is available, eliminating the preferred GPU's idle duplicate recognition net. |
 | VOCR-0071 | open | high | s | Add a configurable worker-readiness deadline that closes the partial fleet and reports a stable startup error when a live child never sends `ready`. |
 | VOCR-0072 | open | medium | s | Make the configured Pyright check clean and add it to documented development gates; it currently reports 10 errors, including nullable `_replies` access and test doubles incompatible with inferred concrete `ParallelOcr` internals. |

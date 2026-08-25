@@ -15,6 +15,10 @@ NORM = (1 / 127.5, 1 / 127.5, 1 / 127.5)
 TARGET_HEIGHT = 48
 
 
+class CtcDictionaryMismatchError(ValueError):
+    """Recognition output classes disagree with the selected dictionary."""
+
+
 def crop_region(rgb: np.ndarray, region) -> np.ndarray:
     """Affine-rectify one oriented region to a horizontal 48-high patch."""
     target_width = max(int(region.height * TARGET_HEIGHT / max(region.width, 1e-6)), 1)
@@ -84,6 +88,13 @@ def decode_ctc(logits: np.ndarray, characters, offset: int = 1) -> tuple[str, fl
     (offset 0). Getting this wrong shifts every character by one and produces
     fluent-looking nonsense, so it is stated per model rather than guessed.
     """
+    expected_classes = len(characters) + offset
+    actual_classes = logits.shape[-1]
+    if actual_classes != expected_classes:
+        raise CtcDictionaryMismatchError(
+            f"recognition output has {actual_classes} classes; "
+            f"the selected dictionary expects {expected_classes}"
+        )
     indices = logits.argmax(axis=1)
     scores = logits.max(axis=1)
     pieces: list[str] = []

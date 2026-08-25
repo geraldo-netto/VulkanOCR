@@ -15,7 +15,7 @@ import numpy as np
 
 from .detection import detect_regions
 from .device import select_hardware_device
-from .recognition import crop_region, decode_ctc, patch_logits, recognise_patch
+from .recognition import CtcDictionaryMismatchError, crop_region, decode_ctc, patch_logits
 
 DEFAULT_TARGET_SIZE = 640
 
@@ -238,19 +238,7 @@ class OcrEngine:
 
     def recognise(self, patch: np.ndarray) -> tuple[str, float]:
         """One rectified patch through the recognition net and the CTC decode."""
-        self._validated_patch(patch)
-        if self._rec is None:
-            raise OcrEngineError(
-                "net-unloaded", "this engine was built without the recognition net"
-            )
-        return recognise_patch(
-            self._runtime,
-            self._rec,
-            patch,
-            self._characters,
-            self._models.blobs,
-            self._models.ctc_offset,
-        )
+        return self.decode(self.logits(patch))
 
     def logits(self, patch: np.ndarray) -> np.ndarray:
         """One patch's raw CTC logits, for callers that decode segments themselves."""
@@ -263,7 +251,10 @@ class OcrEngine:
 
     def decode(self, logits: np.ndarray) -> tuple[str, float]:
         """Greedy-decode a logits slice with this engine's dictionary and offset."""
-        return decode_ctc(logits, self._characters, self._models.ctc_offset)
+        try:
+            return decode_ctc(logits, self._characters, self._models.ctc_offset)
+        except CtcDictionaryMismatchError as error:
+            raise OcrEngineError("dictionary-mismatch", str(error)) from error
 
     @staticmethod
     def _validated(rgb: np.ndarray) -> None:
