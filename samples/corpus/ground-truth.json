@@ -162,6 +162,33 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "hebrew-rtl-clean.png"
+    },
+    {
+      "id": "georgian-mkhedruli-clean",
+      "script": "Geor",
+      "language": "ka",
+      "direction": "ltr",
+      "lines": [
+        "სწრაფი ყავისფერი მელა ზარმაც ძაღლს გადაახტა.",
+        "ქართული ტექსტი: თბილისი, № 42 — ყველაფერი კარგადაა!"
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 1139,
+        "height_px": 164
+      },
+      "background_objects": [],
+      "variant": "clean-36px",
+      "image": "georgian-mkhedruli-clean.png"
     }
   ]
 }

@@ -180,6 +180,22 @@ SCRIPT_DOCUMENTS = [
             "license": FONT_LICENSE,
         },
     },
+    {
+        "id": "georgian-mkhedruli-clean",
+        "script": "Geor",
+        "language": "ka",
+        "direction": "ltr",
+        "lines": [
+            "სწრაფი ყავისფერი მელა ზარმაც ძაღლს გადაახტა.",
+            "ქართული ტექსტი: თბილისი, № 42 — ყველაფერი კარგადაა!",
+        ],
+        "font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "font": {
+            "family": "DejaVu Sans",
+            "file": "DejaVuSans.ttf",
+            "license": FONT_LICENSE,
+        },
+    },
 ]
 
 
