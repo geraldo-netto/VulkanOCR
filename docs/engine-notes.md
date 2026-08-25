@@ -18,7 +18,7 @@ src/vulkanocr/
   cli.py          the `vulkanocr` command
   parallel.py     one recognition process per GPU, work priced per assignment
   proof.py        sysfs gpu_busy_percent sampling, as a context manager
-tests/            74 tests: device policy and engine lifecycle (fake runtime),
+tests/            device policy and engine lifecycle (fake runtime),
                   CTC vectors, detection geometry, catalogue facts, the
                   assembler, the pool's dispatcher and refusals (GPU-free),
                   the scorer and measurement loop, the busy sampler, live GPU
@@ -44,7 +44,7 @@ the float catalog entries.
 ```sh
 .venv/bin/vulkanocr samples/sample-applet.png                 # v6 medium
 .venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
-.venv/bin/python -m pytest -q                                 # 74 passed here
+.venv/bin/python -m pytest -q
 ```
 
 ## Evidence (2026-08-15, this host)
@@ -129,9 +129,8 @@ low-confidence junk at all. A wrong blank convention does not crash — it
 shifts every character silently, which is why it is a stated field and a test
 rather than a guess.
 
-## Known gaps (carried from findings.md)
+## Known gaps
 
-90°-rotated text unreadable (no orientation classifier), glyph-font icons
-decode as CJK noise below ~0.6 confidence, occasional dropped spaces between
-words, Hebrew out of scope (no pretrained model exists in the Paddle
-ecosystem — separate ledger row).
+Current work is tracked in [`TODO.md`](../TODO.md), not the historical spike
+report. It includes glyph-font icons decoded as CJK noise, occasional dropped
+spaces between words, and the Hebrew model/provenance decision.

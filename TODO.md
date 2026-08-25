@@ -10,7 +10,6 @@
 | VOCR-0078 | open | medium | s | Build labeled positive-CJK and negative glyph-icon/background-object cases that reproduce false readings such as `花` and `回`. |
 | VOCR-0079 | open | medium | xs | Define and document a geometry-based word-gap heuristic, including punctuation and right-to-left behavior, before adding whitespace postprocessing. |
 | VOCR-0080 | open | low | s | Unify benchmark engine lifecycle and no-text precondition handling in a shared harness; several scripts manually close resources only on success, while batching scripts crash on blank images through `min`, division by zero, or a zero range step. |
-| VOCR-0082 | open | low | xs | Restore documentation consistency: link active gaps to `TODO.md` instead of the historical `docs/findings.md`, and remove or update stale claims of 74 tests now that the suite collects 76. |
 | VOCR-0093 | open | medium | s | Add configurable font discovery with script-coverage checks and record each corpus font's source, version, and redistribution licence. |
 | VOCR-0104 | open | medium | s | Replace `ParallelOcr` tests that allocate with `__new__` and overwrite private concrete fields with protocol-backed fakes using normal construction. |
 | VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |

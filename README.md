@@ -88,7 +88,7 @@ git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, 
 .venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
 .venv/bin/vulkanocr samples/sample-applet.png --precision fp16
 .venv/bin/vulkanocr samples/sample-applet.png --precision int8  # quantized graphs
-.venv/bin/python -m pytest -q                                # 74 tests; live ones skip without a GPU
+.venv/bin/python -m pytest -q                                # live tests skip without a GPU
 ```
 
 `--precision fp32|fp16|int8` states every ncnn precision option explicitly.
@@ -110,10 +110,9 @@ for a `minAreaRect` is one expression and needs no clipper. It closed the gap
 to upstream (CER 0.0223 → 0.0156) and made reading *faster*, because a taller
 box yields a narrower 48-px crop.
 
-Known gaps, all recorded in [docs/findings.md](docs/findings.md): 90°-rotated text is
-unreadable (no orientation classifier), glyph-font icons decode as CJK noise
-below ~0.6 confidence, and Hebrew has no pretrained model anywhere in the
-Paddle ecosystem.
+Active gaps are tracked in [TODO.md](TODO.md), including glyph-font icons
+decoded as CJK noise, occasional dropped spaces, and the lack of an approved
+Hebrew model.
 
 ## Licence
 
