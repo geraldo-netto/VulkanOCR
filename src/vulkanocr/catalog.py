@@ -43,6 +43,8 @@ class ModelSpec:
     dictionary: str
     blobs: tuple[str, str]
     dictionary_includes_blank: bool
+    orientation: str | None
+    orientation_blobs: tuple[str, str]
     note: str
 
 
@@ -53,6 +55,8 @@ CATALOG: dict[str, ModelSpec] = {
         f"{_AVAFLY}/ppocr_keys_v6.txt",
         ("input", "output"),
         True,
+        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
+        ("input", "output"),
         "current generation, highest accuracy, ~1.0 s per page here",
     ),
     "v6-small": ModelSpec(
@@ -61,6 +65,8 @@ CATALOG: dict[str, ModelSpec] = {
         f"{_AVAFLY}/ppocr_keys_v6.txt",
         ("input", "output"),
         True,
+        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
+        ("input", "output"),
         "balanced tier",
     ),
     "v6-tiny": ModelSpec(
@@ -69,6 +75,8 @@ CATALOG: dict[str, ModelSpec] = {
         f"{_AVAFLY}/ppocr_keys_v6_tiny.txt",
         ("input", "output"),
         True,
+        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
+        ("input", "output"),
         "fastest tier, 49 languages, ~0.37 s per page here",
     ),
     "v5-mobile": ModelSpec(
@@ -77,6 +85,8 @@ CATALOG: dict[str, ModelSpec] = {
         _PACKAGED_KEYS,
         ("in0", "out0"),
         False,
+        None,
+        ("input", "output"),
         "previous generation, kept for comparison",
     ),
 }
@@ -158,4 +168,6 @@ def models_for(name: str = DEFAULT_MODEL, root: Path | None = None) -> OcrModels
         dictionary=_dictionary_path(spec.dictionary, base),
         blobs=spec.blobs,
         dictionary_includes_blank=spec.dictionary_includes_blank,
+        orientation_param=base / spec.orientation if spec.orientation is not None else None,
+        orientation_blobs=spec.orientation_blobs,
     )

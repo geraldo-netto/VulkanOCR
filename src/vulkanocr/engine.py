@@ -44,6 +44,9 @@ class OcrModels:
     dictionary: Path
     blobs: tuple = ("in0", "out0")
     dictionary_includes_blank: bool = False
+    orientation_param: Path | None = None
+    orientation_blobs: tuple[str, str] = ("input", "output")
+    orientation_labels: tuple[int, int] = (0, 180)
 
     @property
     def ctc_offset(self) -> int:
@@ -69,6 +72,15 @@ class OcrModels:
             required += [self.det_param, self.det_param.with_suffix(".bin")]
         if "rec" in nets:
             required += [self.rec_param, self.rec_param.with_suffix(".bin")]
+        if "ori" in nets:
+            if self.orientation_param is None:
+                raise OcrEngineError(
+                    "model-missing", "the selected model profile has no orientation graph"
+                )
+            required += [
+                self.orientation_param,
+                self.orientation_param.with_suffix(".bin"),
+            ]
         for path in required:
             if not Path(path).is_file():
                 raise OcrEngineError(

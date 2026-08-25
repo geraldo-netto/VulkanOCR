@@ -4,19 +4,25 @@ from pathlib import Path
 
 import pytest
 
-from vulkanocr import CATALOG, DEFAULT_MODEL, OcrEngineError, models_for
+from vulkanocr import CATALOG, DEFAULT_MODEL, OcrEngineError, OcrModels, models_for
 
 
 def test_the_default_is_the_current_generation():
     assert DEFAULT_MODEL == "v6-medium"
     assert models_for().blobs == ("input", "output")
     assert models_for().dictionary_includes_blank is True
+    assert models_for().orientation_param == (
+        models_for().det_param.parent / "PP_LCNet_x0_25_textline_ori.param"
+    )
+    assert models_for().orientation_blobs == ("input", "output")
+    assert models_for().orientation_labels == (0, 180)
 
 
 def test_the_previous_generation_keeps_its_own_conventions():
     v5 = models_for("v5-mobile")
     assert v5.blobs == ("in0", "out0")
     assert v5.dictionary_includes_blank is False
+    assert v5.orientation_param is None
 
 
 def test_every_catalogued_model_set_is_installed():
@@ -28,6 +34,35 @@ def test_every_catalogued_model_set_is_installed():
             models_for(name).validated()
     except OcrEngineError:
         pytest.skip("model ports are not fetched here; see THIRD-PARTY.md")
+
+
+def test_every_orientation_catalog_entry_is_installed_when_models_are_fetched():
+    try:
+        for name in CATALOG:
+            models = models_for(name)
+            if models.orientation_param is not None:
+                models.validated(("ori",))
+    except OcrEngineError:
+        pytest.skip("model ports are not fetched here; see THIRD-PARTY.md")
+
+
+def test_orientation_validation_requires_both_graph_files(tmp_path):
+    dictionary = tmp_path / "keys.txt"
+    dictionary.write_text("a\n", encoding="utf-8")
+    orientation = tmp_path / "orientation.param"
+    orientation.write_text("param", encoding="utf-8")
+    models = OcrModels(
+        tmp_path / "det.param",
+        tmp_path / "rec.param",
+        dictionary,
+        orientation_param=orientation,
+    )
+
+    with pytest.raises(OcrEngineError, match="orientation.bin"):
+        models.validated(("ori",))
+
+    orientation.with_suffix(".bin").write_bytes(b"weights")
+    assert models.validated(("ori",)) is models
 
 
 def test_an_unknown_model_set_names_the_known_ones():
