@@ -200,17 +200,21 @@ def test_live_silent_worker_hits_configured_startup_deadline_and_closes_fleet():
 
 
 def test_live_silent_worker_hits_inference_response_deadline():
+    process = FakeProcess(alive=True)
     fleet = _fleet(
         FakeQueue(),
         [SimpleNamespace(index=0, name="Silent GPU")],
-        [FakeProcess(alive=True)],
+        [process],
     )
     fleet._response_timeout_s = 0.01
     fleet.send(0, 4, 7, np.zeros((48, 96, 3), dtype=np.uint8))
+    fleet.send(0, 3, 2, np.zeros((48, 48, 3), dtype=np.uint8))
 
     with pytest.raises(OcrEngineError) as caught:
         fleet.answer()
 
     assert caught.value.code == "worker-response-timeout"
     assert "0.01 seconds" in caught.value.detail
-    assert (4, 7) in fleet._inflight
+    assert fleet.count == 0
+    assert fleet._inflight == {}
+    assert not process.is_alive()

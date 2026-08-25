@@ -207,13 +207,18 @@ class MultiprocessingWorkerFleet:
 
     def answer(self) -> WorkerAnswer:
         deadline = min((job.deadline for job in self._inflight.values()), default=None)
-        message = self._next_message(
-            deadline=deadline,
-            timeout_error=(
-                "worker-response-timeout",
-                f"recognition did not finish within {self._response_timeout_s:g} seconds",
-            ),
-        )
+        try:
+            message = self._next_message(
+                deadline=deadline,
+                timeout_error=(
+                    "worker-response-timeout",
+                    f"recognition did not finish within {self._response_timeout_s:g} seconds",
+                ),
+            )
+        except OcrEngineError as error:
+            if error.code == "worker-response-timeout":
+                self._retire_expired_jobs()
+            raise
         if message[0] != "done":
             raise OcrEngineError("worker-protocol", f"expected done, received {message[0]}")
         _kind, index, generation, crop_index, result, elapsed = message
@@ -260,15 +265,26 @@ class MultiprocessingWorkerFleet:
         self._retire(index)
         raise OcrEngineError("worker-failed", f"the GPU worker for {device.name} raised {detail}")
 
-    def _retire(self, index: int) -> None:
+    def _retire_expired_jobs(self) -> None:
+        now = time.monotonic()
+        expired = {job.device_index for job in self._inflight.values() if job.deadline <= now}
+        for index in expired:
+            self._retire(index, force=True)
+
+    def _retire(self, index: int, *, force: bool = False) -> None:
         self._names.pop(index, None)
         self._costs.pop(index, None)
+        self._inflight = {
+            key: job for key, job in self._inflight.items() if job.device_index != index
+        }
         channel = self._requests.pop(index, None)
         if channel is not None:
             channel.close()
             channel.cancel_join_thread()
         process = self._processes.pop(index, None)
         if process is not None:
+            if force and process.is_alive():
+                process.terminate()
             process.join(timeout=10)
             if process.is_alive():
                 process.terminate()
