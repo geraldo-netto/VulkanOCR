@@ -1,4 +1,4 @@
-"""Read the corpus with the ncnn/Vulkan spike engine and score it."""
+"""Read the corpus with VulkanOCR and score it."""
 
 from __future__ import annotations
 

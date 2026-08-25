@@ -1,4 +1,4 @@
-"""Batching PoC: recognise the crops of one page concurrently.
+"""Historical batching PoC: recognise one page's crops concurrently.
 
 ncnn has no batch dimension a convolution graph can use — `Mat` is (w, h, c)
 and the exported PP-OCR rec graph takes one 48-high strip at a time — so
@@ -6,8 +6,10 @@ and the exported PP-OCR rec graph takes one 48-high strip at a time — so
 extractors in flight at once over the same loaded net, so the GPU has work
 queued while the CPU packs the next crop.
 
-Measured against the sequential path on the same image, same models, same
-device, with the decoded text compared line for line.
+Measured on 2026-08-21 against the sequential path on the same image, models,
+and device, with decoded text compared line for line. The PoC predates
+``OcrEngine.crops()`` returning ``(region, patch)`` pairs and needs an
+unpacking adapter before it can be rerun.
 """
 
 from __future__ import annotations

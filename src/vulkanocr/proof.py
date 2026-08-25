@@ -1,9 +1,9 @@
-"""Proof a read ran on hardware: the kernel's own busy counters.
+"""Proof a read ran on selected hardware using the kernel's own counters.
 
-The AMD DRM counter ``gpu_busy_percent`` is sampled from sysfs while work
-runs; a software (llvmpipe) run cannot move it. Instrumentation, not OCR —
-which is why it lives here and not in the CLI that happens to print it
-(VOCR-0053).
+Per-process DRM fdinfo engine deltas are preferred. AMD's sysfs
+``gpu_busy_percent`` is a clearly labelled system-wide fallback. This is
+instrumentation, not OCR, so it lives here rather than in the CLI that happens
+to print it (VOCR-0053).
 """
 
 from __future__ import annotations

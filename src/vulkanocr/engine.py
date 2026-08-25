@@ -1,8 +1,9 @@
-"""The engine facade: load once, read many images, Vulkan only.
+"""The engine facade: load once, read many images, Vulkan by default.
 
-Precision policy matches the service's Vulkan executor: fp16 packed, storage,
-and arithmetic are all disabled, so every model runs at fp32 regardless of the
-device's fp16 capability.
+The default policy disables fp16 packed, storage, and arithmetic for a measured
+fp32 baseline. Callers may select explicit fp16 or int8 options; int8 changes
+runtime policy but still requires quantized model artifacts. Disabling Vulkan
+is retained as a benchmark seam, not an automatic CPU fallback.
 """
 
 from __future__ import annotations

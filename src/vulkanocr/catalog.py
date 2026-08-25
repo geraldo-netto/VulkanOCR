@@ -142,7 +142,7 @@ CATALOG: dict[str, ModelProfile] = {
     "v6-medium": ModelProfile(
         DETECTORS["v6-medium-det"],
         RECOGNIZERS["v6-medium-rec"],
-        "current generation, highest accuracy, ~1.0 s per page here",
+        "current generation, highest-accuracy catalog tier",
         f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
     ),
     "v6-small": ModelProfile(
@@ -154,7 +154,7 @@ CATALOG: dict[str, ModelProfile] = {
     "v6-tiny": ModelProfile(
         DETECTORS["v6-tiny-det"],
         RECOGNIZERS["v6-tiny-rec"],
-        "fastest tier, 49 languages, ~0.37 s per page here",
+        "fastest catalog tier, 49 languages",
         f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
     ),
     "v5-mobile": ModelProfile(

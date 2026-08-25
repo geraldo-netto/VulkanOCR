@@ -1,9 +1,11 @@
-# Benchmarks — how the published numbers were taken (2026-08-21)
+# Benchmarks — how the published numbers were taken (2026-08-25)
 
-Everything here is produced by committed runners in [`benchmarks/`](../benchmarks)
-against the engine as it stands, in one generation of the corpus. Nothing in
-this file is hand-run: if a number cannot be reproduced by a script, it is not
-here.
+The main comparison is produced by committed runners in
+[`benchmarks/`](../benchmarks) against the current engine, in one generation of
+the corpus. The Vulkan rows were rerun after text-line orientation and
+whitespace reconstruction landed. Sections explicitly dated 2026-08-21 retain
+earlier diagnostic experiments; they are evidence for design choices, not
+current headline timings.
 
 ## The corpus
 
@@ -46,7 +48,6 @@ words, and exact means equality of the normalised line multisets.
 .venv/bin/python benchmarks/make_corpus.py --orientation-samples samples/orientation-corpus
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision fp16
-.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision int8
 python3 benchmarks/read_with_tesseract.py /tmp/corpus 6
 <paddle-venv>/bin/python benchmarks/read_with_paddleocr.py /tmp/corpus
 python3 benchmarks/compare_engines.py /tmp /tmp/corpus
@@ -54,9 +55,12 @@ python3 benchmarks/compare_engines.py /tmp /tmp/corpus
 
 The Paddle virtualenv installs the `paddle` extra's pins
 (`paddleocr>=3.7,<4`, `paddlepaddle>=3.2,<3.3`); the corpus generator needs
-only the `corpus` extra (Pillow) in the project's own venv, and the Tesseract
-runner needs the system `tesseract-ocr` binary. The README's Install section
-lists all of it in one place.
+the `corpus` extra (Pillow, FontTools and JSON Schema) in the project's own
+venv, and the Tesseract runner needs the system `tesseract-ocr` binary. The
+README's Install section lists all of it in one place.
+The runner also accepts `--precision int8`, but no quantized profile is
+catalogued; enabling int8 flags on the current float profiles is not a
+validated int8 benchmark and is therefore absent from the published table.
 On 3.3.1 the PIR→oneDNN instruction converter fails on a `conv2d` attribute
 (`ConvertPirAttribute2RuntimeAttribute not support`), for every PP-OCR graph,
 with no flag or blocklist that avoids it — bisected to the op. `--no-mkldnn`
@@ -66,64 +70,81 @@ reproduces that crippled configuration; the default is upstream's fair fight.
 
 | engine | device | CER | WER | exact | p50 | p95 |
 | --- | --- | --- | --- | --- | --- | --- |
-| vulkanocr/v6-medium | RX 6600 XT | 0.0154 | **0.0379** | 75 % | 97 ms | 124 ms |
-| vulkanocr/v6-medium+fp16 | RX 6600 XT | 0.0154 | **0.0379** | 75 % | **67 ms** | 86 ms |
-| paddleocr 3.7.0 / paddle 3.2.2 / oneDNN | CPU | 0.0154 | 0.0498 | 73 % | 184 ms | 223 ms |
-| vulkanocr/v6-tiny | RX 6600 XT | 0.0163 | 0.0660 | 60 % | 22 ms | 35 ms |
-| vulkanocr/v5-mobile | RX 6600 XT | 0.0405 | 0.1104 | 51 % | 45 ms | 76 ms |
-| tesseract 5.3.4 psm6 | CPU | 0.0459 | 0.1255 | 58 % | 93 ms | 107 ms |
+| vulkanocr/v6-medium | RX 6600 XT | 0.0159 | **0.0390** | 75 % | 99 ms | 118 ms |
+| vulkanocr/v6-medium+fp16 | RX 6600 XT | 0.0159 | **0.0390** | 75 % | **66 ms** | 79 ms |
+| paddleocr 3.7.0 / paddle 3.2.2 / oneDNN | CPU | 0.0158 | 0.0498 | 73 % | 189 ms | 230 ms |
+| vulkanocr/v6-small | RX 6600 XT | 0.0181 | **0.0368** | 73 % | 47 ms | 66 ms |
+| vulkanocr/v6-tiny | RX 6600 XT | 0.0163 | 0.0639 | 60 % | 26 ms | 32 ms |
+| vulkanocr/v5-mobile | RX 6600 XT | 0.0351 | 0.1017 | 55 % | 45 ms | 80 ms |
+| tesseract 5.3.4 psm6 | CPU | 0.0337 | 0.0887 | 73 % | 94 ms | 110 ms |
 
-Same PP-OCRv6_medium det+rec graphs behind the first three rows, so those
-rows isolate the port and the backend: character accuracy is identical, word
-accuracy slightly better here (segmentation), and the GPU is ~2× faster wall
-clock at fp32, ~2.7× at fp16, which measured no accuracy cost (CER identical
-to the fourth decimal).
+The same PP-OCRv6 medium detector/recognizer tier underpins the first three
+rows: PaddleOCR runs the original graphs while VulkanOCR runs the ncnn
+conversion and its catalogued text-line orientation graph. Character accuracy
+is equivalent at the precision this corpus can support, word accuracy is
+slightly better here (segmentation), and the GPU is ~1.9× faster wall clock at
+fp32 and ~2.9× at fp16. fp16 measured no accuracy cost in this run.
+
+The tier rows use copies of the same generated images and truth whose
+manifests declare the corresponding VulkanOCR profile. This is required by
+the runner: a positional model override that differs from the manifest is a
+refusal, not a silent substitution.
 
 The exact-match rows are 41 vs 40 images of 55 — one image, inside the noise
 of a corpus this size, so exactness reads as equivalent rather than a win.
 The three tie-breaking images are instructive, though: PaddleOCR's two misses
 are classic confusions (`O gato` as `0 gato` in a monospace face, an
 underscore lost to σ25 noise), ours is two hallucinated Portuguese accents at
-16 px (`subíu`, `fría`) — the thin-stroke weakness the unclip change shrank
+16 px (`subíu`, `fícou`) — the thin-stroke weakness the unclip change shrank
 but did not eliminate.
 
 Per-degradation CER, from the same run:
 
 | variant | v6-medium | +fp16 | paddle+oneDNN | tesseract |
 | --- | --- | --- | --- | --- |
-| clean 28px sans | 0.006 | 0.006 | 0.006 | 0.011 |
-| clean 12px sans | 0.006 | 0.006 | 0.006 | 0.027 |
-| blur 5px | 0.000 | 0.000 | 0.000 | 0.011 |
-| noise σ25 | 0.000 | 0.000 | 0.002 | 0.011 |
-| JPEG q30 | 0.006 | 0.006 | 0.004 | 0.011 |
-| faded 40 % | 0.002 | 0.002 | 0.006 | 0.011 |
-| skew 5° | 0.000 | 0.000 | 0.000 | 0.032 |
-| skew 12° | 0.143 | 0.143 | 0.131 | 0.335 |
+| clean 28px sans | 0.006 | 0.006 | 0.006 | 0.000 |
+| clean 12px sans | 0.006 | 0.006 | 0.006 | 0.012 |
+| blur 5px | 0.000 | 0.000 | 0.000 | 0.000 |
+| noise σ25 | 0.000 | 0.000 | 0.002 | 0.000 |
+| JPEG q30 | 0.006 | 0.006 | 0.004 | 0.000 |
+| faded 40 % | 0.002 | 0.002 | 0.006 | 0.000 |
+| skew 5° | 0.000 | 0.000 | 0.000 | 0.025 |
+| skew 12° | 0.146 | 0.146 | 0.135 | 0.320 |
 
-## CPU cost, dense real page
+## CPU cost, dense real page (2026-08-21)
 
 `../samples/sample-applet.png`, 585×770 of 12 px UI text: vulkanocr ~671 ms
 wall / ~1.4 s CPU; PaddleOCR + oneDNN ~1.2 s wall / ~12.0 s CPU; with oneDNN
 off (the 3.3 regression's configuration) ~9-10 s wall / ~90-100 s CPU.
-PaddleOCR cannot use this GPU at all: `is_compiled_with_cuda()` and
-`is_compiled_with_rocm()` are both false, and Paddle has no Vulkan backend.
+The compared PaddlePaddle build cannot use this GPU:
+`is_compiled_with_cuda()` and `is_compiled_with_rocm()` are both false, and it
+has no Vulkan backend.
 
 ## That it really is Vulkan
 
-The CLI and `benchmarks/gpu_proof.py` read this process's own DRM fdinfo
-engine counters when the driver supplies them: ~1.2-1.3 s of
-`drm-engine-compute` per ~700 ms read, ~721 MiB VRAM held. This is preferred
-proof because it excludes other processes. AMD `gpu_busy_percent` remains an
-explicitly system-wide fallback when fdinfo lacks engine counters.
+The CLI matches this process's DRM fdinfo engine counters to the selected
+device when the driver supplies them; this is preferred proof because it
+excludes other processes. `benchmarks/gpu_proof.py` is a narrower,
+single-engine diagnostic that totals the benchmark process's DRM counters:
+~1.2-1.3 s of `drm-engine-compute` per ~700 ms read and ~721 MiB VRAM held in
+the 2026-08-21 run. AMD `gpu_busy_percent` remains an explicitly system-wide
+CLI fallback when fdinfo lacks engine counters. With `--all-gpus`, fdinfo sees
+the parent process's detection and optional orientation work, not recognition
+in child workers.
 `benchmarks/vulkan_vs_cpu.py` runs the same models with the Vulkan knob off:
-identical output, GPU ~1.6× faster for v6-medium. `benchmarks/phase_timings.py`
-splits a read: ~38 ms detection, ~1 ms cropping, ~600 ms recognition —
-46 sequential net calls, which is where the batching question came from.
+identical output, GPU ~1.2× faster for v6-medium on the current dense-page
+rerun. `benchmarks/phase_timings.py`
+profiles detection, OpenCV cropping, and recognition in isolation: ~38 ms,
+~1 ms, and ~594 ms respectively across 46 sequential recognition calls on the
+current dense page. The optional orientation pass used by PP-OCRv6 is excluded
+from that script; the full CLI read measured 665 ms median over three warm
+passes on 2026-08-25.
 
-## The hallucinated accent: measured, also negative
+## The interpolation experiment (2026-08-21, retained negative)
 
-The one tie-breaking image we miss (`subíu`/`fría` for 16 px `subiu`/`fria`)
-looked like a preprocessing bug: on that single crop, cubic or Lanczos
+The earlier run's tie-breaking miss (`subíu`/`fría` for 16 px
+`subiu`/`fria`) looked like a preprocessing bug: on that single crop, cubic
+or Lanczos
 resampling reads it clean where the fused bilinear warp does not. But every
 global alternative regresses the corpus — cubic-on-upscale CER 0.0154→0.0159,
 Lanczos 0.0165, and rectifying at native size before a separate resize (the
@@ -143,18 +164,21 @@ crop the fast card would finish sooner hurts the page. The dispatcher grants
 a slow device a cheap crop only while its cumulative commitment stays under
 the fast side's projected work; prices are seeded by a start-up probe strip
 and refined by every finished crop, so an unrepresentative probe cannot
-mis-price the pool for its whole life. Result on RX 6600 XT + Radeon 610M:
-**639 → 573 ms (1.12x), text identical** (re-runs land between 1.07x and
-1.12x); on near-equal devices the same policy splits the page and approaches
-2x. On a machine with one hardware device the pool builds no worker fleet at
-all — it is the single engine, same answers, nothing spawned.
+mis-price the pool for its whole life. The current result on RX 6600 XT +
+Radeon 610M is **668 → 617 ms (1.08x), text identical**; on near-equal devices
+the same policy can split more of the page. On a machine with one hardware
+device the pool builds no worker fleet at all — it is the single engine, same
+answers, nothing spawned.
 
-## Batching: measured, negative
+## Batching (2026-08-21, retained negative)
 
 Three attempts, all in [`benchmarks/`](../benchmarks): concurrent extractors
 (0.9-1.0×, the binding serialises), packing every crop into one strip
 (≤1.35×, and it corrupts lines — the encoder mixes across the strip), packing
-only narrow crops (inside the noise). `dispatch_vs_compute.py` explains it:
-per-call overhead ~5 ms, but wide crops are compute-bound at ~900 ms/MPix
-fp32. What actually pays is fp16 (1.5× on recognition, no measured accuracy
-cost) and the model tier (v6-tiny is 4.5× v6-medium at +0.001 CER).
+only narrow crops (inside the noise). The contemporaneous
+`dispatch_vs_compute.py` run measured per-call overhead at ~5 ms and wide
+crops at ~900 ms/MPix fp32. The PoCs predate the public `crops()` seam returning
+`(region, patch)` pairs and need an unpacking update before they can be rerun;
+their retained result is not a current gate. The current corpus still shows
+the useful production knobs: fp16 has no measured accuracy cost, and v6-tiny
+is ~3.8× v6-medium at +0.0004 CER.

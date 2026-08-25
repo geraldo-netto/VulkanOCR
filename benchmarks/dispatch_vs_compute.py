@@ -1,4 +1,8 @@
-"""Is recognition dispatch-bound or compute-bound? And what does fp16 buy?"""
+"""Historical recognition dispatch-vs-compute experiment (2026-08-21).
+
+The measurement predates ``OcrEngine.crops()`` returning ``(region, patch)``
+pairs and needs an unpacking adapter before it can be rerun.
+"""
 
 from __future__ import annotations
 

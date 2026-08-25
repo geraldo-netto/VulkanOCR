@@ -1,4 +1,4 @@
-"""Batching PoC 2: one net call over several crops packed side by side.
+"""Historical batching PoC 2: pack several crops into one net call.
 
 The rec net takes a 48-high strip of any width and emits one CTC timestep per
 few input columns, so k crops separated by a white gap wider than the
@@ -7,6 +7,9 @@ they do is a property of the graph — a purely convolutional encoder keeps
 them independent, an attention encoder mixes them — so this measures it
 rather than assuming it: every batched line is compared with the same crop
 read on its own.
+
+Measured on 2026-08-21. The PoC predates ``OcrEngine.crops()`` returning
+``(region, patch)`` pairs and needs an unpacking adapter before rerun.
 """
 
 from __future__ import annotations

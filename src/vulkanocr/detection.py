@@ -1,8 +1,8 @@
 """Text detection: DB probability map to oriented boxes.
 
-Constants and geometry follow the reference implementation in
-nihui/ncnn-android-ppocrv5 ``ppocrv5.cpp`` (BSD 3-Clause, Tencent), which
-replaces the original DB unclip with a fixed box enlargement.
+Preprocessing starts from nihui/ncnn-android-ppocrv5 ``ppocrv5.cpp``
+(BSD 3-Clause, Tencent). Geometry corrections are documented beside their
+implementations, including restoration of DB's unclip rule.
 """
 
 from __future__ import annotations

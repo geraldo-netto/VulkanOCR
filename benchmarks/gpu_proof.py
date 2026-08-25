@@ -1,4 +1,4 @@
-"""Per-process GPU proof: amdgpu fdinfo counters for this PID only."""
+"""Per-process GPU proof: DRM fdinfo counters for this PID only."""
 
 import os
 import pathlib

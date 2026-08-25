@@ -1,27 +1,32 @@
 # VulkanOCR
 
-PaddleOCR's models, running on ncnn over Vulkan, on any GPU with a Vulkan
-driver — including AMD cards, where PaddlePaddle itself has no backend at all.
+PaddleOCR's models, running on ncnn over Vulkan, on hardware GPUs exposed by
+ncnn's Vulkan runtime — including this AMD card, which the compared
+PaddlePaddle build cannot use.
 
-Upstream PaddleOCR is CUDA or CPU. On this machine's Radeon RX 6600 XT
+On this machine's Radeon RX 6600 XT
 `paddle.device.is_compiled_with_cuda()` and `is_compiled_with_rocm()` are both
 false, so PaddleOCR runs on the processor and nothing else. VulkanOCR runs the
-same PP-OCRv6 graphs on the GPU through ncnn, at the same accuracy:
+corresponding PP-OCRv6 medium detector and recognizer on the GPU through ncnn.
+On the synthetic corpus its character accuracy is equivalent, its word error
+rate is lower, and it is faster:
 
 | | VulkanOCR (GPU) | PaddleOCR (CPU) |
 | --- | --- | --- |
-| character error rate | 0.0154 | 0.0154 |
-| word error rate | **0.0379** | 0.0498 |
+| character error rate | 0.0159 | 0.0158 |
+| word error rate | **0.0390** | 0.0498 |
 | images read perfectly | 75 % | 73 % — 41 vs 40 of 55, equivalent |
-| median page | **97 ms** (67 ms with fp16) | 184 ms |
-| CPU time per dense page | **~1.4 s** | ~12.0 s |
+| median page | **99 ms** (66 ms with fp16) | 189 ms |
 
-Same PP-OCRv6_medium models on both sides. The PaddleOCR column is
+The same PP-OCRv6 medium detector/recognizer tier underpins both sides, though
+VulkanOCR uses the converted ncnn graphs and also runs its catalogued
+text-line orientation graph. The PaddleOCR column is
 `paddleocr 3.7.0` on `paddlepaddle 3.2.2` with oneDNN on — its best CPU
 configuration; on paddlepaddle 3.3 the PIR→oneDNN converter refuses every
 PP-OCR graph, which is why the `paddle` extra pins `<3.3`. Every row is
 produced by a committed runner and `benchmarks/compare_engines.py`, from one
-generation of the corpus.
+generation of the corpus rerun on 2026-08-25 after orientation correction and
+whitespace reconstruction landed.
 
 55 rendered pages with exact ground truth, five texts across eleven
 degradations — sizes, fonts, skew, blur, noise, JPEG and a faded scan. The
@@ -36,20 +41,25 @@ src/vulkanocr/      the engine, installed as the `vulkanocr` package
   device.py         hardware-only Vulkan selection; software rasterisers are refused
   detection.py      DB preprocess -> probability map -> oriented boxes -> unclip
   recognition.py    affine crop -> CTC head -> greedy decode
+  orientation.py    correct 0°/180° text-line direction before recognition
+  layout.py         infer conservative separators between detector regions
   engine.py         facade: load once, read(rgb) -> OcrResult
-  catalog.py        model sets as data: PP-OCRv6 tiny/small/medium, PP-OCRv5 mobile
+  catalog.py        independently composable components and named model profiles
+  options.py        explicit fp32/fp16/int8 execution policy
+  policy.py         opt-in, page-aware filtering of known false readings
   cli.py            the `vulkanocr` command (`--all-gpus` pools every device)
-  parallel.py       one engine process per GPU; a slow card can help, never hurt
-  proof.py          sysfs gpu_busy_percent sampling, as a context manager
+  parallel.py       detect/orient once; schedule recognition across GPU workers
+  scheduling.py     cost-aware crop assignment; slow devices may remain idle
+  workers.py        one recognition-only child process per hardware GPU
+  proof.py          per-process DRM telemetry with an AMD system-wide fallback
 tests/              the suite; the live tests skip without a GPU
 benchmarks/         corpus, scorer, shared measurement loop, one runner per engine, the batching PoCs
-docs/               benchmarks, engine notes, and the findings of the first pass
+docs/               benchmarks, engine notes, whitespace contract, and historical findings
 samples/            the images the README and tests quote
 ```
 
-About fourteen hundred lines of engine and as much again in tests — sizes
-that drift, so the claim is the shape, not a census. Dependencies are `ncnn`, `numpy` and
-`opencv` — no PaddlePaddle, no ONNX, no polygon clipper.
+Dependencies are `ncnn`, `numpy` and `opencv` — no PaddlePaddle, no ONNX, no
+polygon clipper.
 
 ## Install
 
@@ -67,17 +77,21 @@ The model graphs are third-party ports and are not vendored here; fetch them
 once (see [THIRD-PARTY.md](THIRD-PARTY.md)):
 
 ```sh
-git clone https://github.com/Avafly/PaddleOCR-ncnn-CPP   # PP-OCRv6, MIT
-git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, BSD-3
+git clone https://github.com/Avafly/PaddleOCR-ncnn-CPP   # ncnn conversions, MIT
+git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # ncnn conversion, BSD-3
 # cloned elsewhere? point VULKANOCR_MODELS_ROOT at the directory holding both
 ```
+
+The converted repositories have the licences shown above; the underlying
+PaddlePaddle model weights are Apache-2.0. Avafly also supplies the PP-LCNet
+text-line orientation graph used by the v6 profiles.
 
 **Optional**, by what you want to do:
 
 | you want to | install |
 | --- | --- |
 | run development gates | `.venv/bin/python -m pip install -e '.[dev]'` (pytest, Ruff, Pyright) |
-| regenerate the corpus | `.venv/bin/python -m pip install -e '.[corpus]'` (Pillow, used by `benchmarks/make_corpus.py`) |
+| regenerate the corpus | `.venv/bin/python -m pip install -e '.[corpus]'` (Pillow, FontTools and JSON Schema) |
 | run the PaddleOCR comparison | the `paddle` extra — in a **separate** venv, never this one: `python3 -m venv ~/paddle-venv && ~/paddle-venv/bin/python -m pip install 'vulkanocr[paddle] @ file://'$PWD` ([docs/benchmarks.md](docs/benchmarks.md) says why, and why it pins paddlepaddle `<3.3`) |
 | run the Tesseract comparison | the system binary: `sudo apt install tesseract-ocr` (Debian/Ubuntu) |
 
@@ -87,15 +101,17 @@ git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, 
 .venv/bin/vulkanocr samples/sample-applet.png                # PP-OCRv6 medium
 .venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
 .venv/bin/vulkanocr samples/sample-applet.png --precision fp16
-.venv/bin/vulkanocr samples/sample-applet.png --precision int8  # quantized graphs
+.venv/bin/vulkanocr samples/sample-applet.png --repeat 5         # five extra timed reads
+.venv/bin/vulkanocr samples/sample-applet.png --all-gpus        # pool hardware GPUs
 .venv/bin/python -m pytest -q                                # live tests skip without a GPU
 .venv/bin/ruff check .
 .venv/bin/pyright
 ```
 
 `--precision fp32|fp16|int8` states every ncnn precision option explicitly.
-`int8` enables quantized arithmetic; it does not quantize a float graph, so use
-it with a quantized model profile.
+`int8` enables quantized arithmetic; it does not quantize a float graph. No
+quantized model profile is catalogued yet, so the current CLI model choices do
+not provide a validated int8 path.
 
 The command prints the device it chose, the lines with their coordinates and
 confidence, and attributable GPU telemetry while it works.
@@ -108,7 +124,10 @@ confidence, and attributable GPU telemetry while it works.
 | `GPU telemetry unavailable: ... does not match ...` | None | Available telemetry belongs to another or ambiguously identical device and is not accepted as proof. |
 
 A supported provider can report zero activity; that differs from unsupported
-telemetry. Exact provider behavior and benchmark evidence live in
+telemetry. With `--all-gpus`, fdinfo covers the CLI parent process (detection
+and optional orientation), not recognition performed by child workers; the AMD
+fallback is system-wide and may include unrelated work. Exact provider
+behavior and benchmark evidence live in
 [the benchmark notes](docs/benchmarks.md).
 
 ## Accuracy notes
@@ -121,17 +140,26 @@ for a `minAreaRect` is one expression and needs no clipper. It closed the gap
 to upstream (CER 0.0223 → 0.0156) and made reading *faster*, because a taller
 box yields a narrower 48-px crop.
 
-Active gaps are tracked in [TODO.md](TODO.md), including occasional dropped
-spaces and the lack of an approved Hebrew model.
+PP-OCRv6 profiles include a text-line orientation graph and are exercised at
+all four cardinal page rotations. The PP-OCRv5 profile has no orientation
+graph. VulkanOCR also reconstructs conservative separators when the detector
+splits one visual line into multiple regions; the exact geometry, punctuation
+and bidirectional limits are documented in
+[docs/whitespace.md](docs/whitespace.md). It cannot recover a space lost inside
+one recognition region.
+
+Active gaps are tracked in [TODO.md](TODO.md). The open table is currently
+empty; blocked work covers Hebrew model approval and artifacts, validated int8
+artifacts, and a checksum-pinned component model store.
 
 Known icon readings can be filtered without banning CJK globally by supplying
 both an opt-in policy and page context:
 
 ```python
-from vulkanocr import FalsePositivePolicy, OcrEngine, RecognitionContext
+from vulkanocr import FalsePositivePolicy, OcrEngine, RecognitionContext, models_for
 
 engine = OcrEngine(
-    models,
+    models_for(),
     false_positive_policy=FalsePositivePolicy(frozenset({"花", "回"})),
     recognition_context=RecognitionContext(page_languages=frozenset({"en"})),
 )

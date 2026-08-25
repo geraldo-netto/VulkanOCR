@@ -2,9 +2,10 @@
 
 Rewritten off the monkeypatch: it used to replace three functions inside
 `vulkanocr.engine`'s module namespace, which broke the moment the engine
-composed them differently. The public seam is timed instead — the same calls
-`read()` makes, in the same order — so the split stays honest across
-refactors of the internals.
+composed them differently. The public detection and recognition seams are
+timed instead. Optional text-line orientation and result assembly are excluded,
+so this profiles the expensive phases in isolation rather than reconstructing
+the full `read()` wall clock.
 """
 
 import pathlib

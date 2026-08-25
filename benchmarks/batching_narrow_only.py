@@ -1,10 +1,13 @@
-"""Batching PoC 3: pack only the narrow crops, where dispatch dominates.
+"""Historical batching PoC 3: pack narrow, dispatch-bound crops.
 
 Per-call overhead measures ~5 ms, so a 43-px crop costs 6.5 ms of which about
 1.4 ms is arithmetic. Wide crops are compute-bound and gain nothing from
 packing — and packing them corrupts the decode, because the encoder mixes
 across the strip. This packs only crops below a width threshold and keeps the
 rest one to a call, then checks both halves of that claim.
+
+Measured on 2026-08-21. The PoC predates ``OcrEngine.crops()`` returning
+``(region, patch)`` pairs and needs an unpacking adapter before rerun.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Read the corpus with upstream PaddleOCR (CPU) and score it identically.
 
-Run from PaddleOCR's own virtualenv, not this project's: install the `bench`
+Run from PaddleOCR's own virtualenv, not this project's: install the `paddle`
 extra's pins there (`paddlepaddle>=3.2,<3.3` — 3.3.1's PIR-to-oneDNN
 converter refuses every PP-OCR graph, see `docs/benchmarks.md`), which is why
 the import is unresolvable here.
