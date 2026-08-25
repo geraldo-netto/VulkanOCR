@@ -23,7 +23,7 @@ from vulkanocr import (
 )
 from vulkanocr.device import HardwareVulkanUnavailableError
 from vulkanocr.engine import OcrEngineError
-from vulkanocr.proof import ProofResult, busy_sampler, system_busy_result
+from vulkanocr.proof import ProofResult, proof_sampler
 
 
 def _non_negative_int(value: str) -> int:
@@ -87,10 +87,9 @@ def main() -> int:
         print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")
         print(f"precision: {arguments.precision}")
         print(f"device: {engine.device_name}")
-        selected_devices = engine.devices
-        with engine, busy_sampler() as samples:
+        with engine, proof_sampler(engine.devices) as proof_capture:
             result, first_ms, timings = _timed_reads(engine, rgb, arguments.repeat)
-        proof = system_busy_result(selected_devices, samples)
+        proof = proof_capture.finished_result()
     except (OcrEngineError, HardwareVulkanUnavailableError) as error:
         raise SystemExit(str(error)) from error
     _report(result, first_ms, timings, proof)
@@ -132,11 +131,22 @@ def _report(result, first_ms: float, timings: list[float], proof: ProofResult) -
     if result.filtered_regions:
         print(f"{result.filtered_regions} recognised regions were filtered as known noise")
 
+    _report_proof(proof)
+
+
+def _report_proof(proof: ProofResult) -> None:
     if not proof.supported:
         print(f"\nGPU telemetry unavailable: {proof.unavailable_reason}")
         return
-    values = [sample.value for sample in proof.matching_samples]
     print(f"\nGPU activity ({proof.provider}, {proof.scope}-wide):")
+    if proof.scope == "process":
+        totals: dict[str, float] = {}
+        for sample in proof.matching_samples:
+            totals[sample.metric] = totals.get(sample.metric, 0.0) + sample.value
+        for metric, nanoseconds in sorted(totals.items()):
+            print(f"  {metric}: +{nanoseconds / 1e6:.1f} ms")
+        return
+    values = [sample.value for sample in proof.matching_samples]
     print(
         f"  max {max(values):.0f}%  mean {statistics.fmean(values):.1f}%  "
         f"samples {len(values)}"

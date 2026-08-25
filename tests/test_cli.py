@@ -9,7 +9,7 @@ import pytest
 from vulkanocr import InferenceOptions, cli
 from vulkanocr.device import VulkanDevice
 from vulkanocr.engine import OcrEngineError
-from vulkanocr.proof import ProofDevice, ProofResult
+from vulkanocr.proof import ProofDevice, ProofResult, ProofSample
 
 
 def test_precision_defaults_to_fp32():
@@ -63,7 +63,11 @@ def test_read_time_engine_error_is_printed_and_the_engine_is_closed(monkeypatch)
     monkeypatch.setattr(cli.cv2, "imread", lambda *_args: np.zeros((2, 2, 3), np.uint8))
     monkeypatch.setattr(cli.cv2, "cvtColor", lambda image, _conversion: image)
     monkeypatch.setattr(cli, "_reader", lambda _arguments: engine)
-    monkeypatch.setattr(cli, "busy_sampler", lambda: nullcontext({}))
+    monkeypatch.setattr(
+        cli,
+        "proof_sampler",
+        lambda _devices: nullcontext(SimpleNamespace(result=None)),
+    )
 
     with pytest.raises(SystemExit, match="recognition-inference-failed: extract failed"):
         cli.main()
@@ -86,3 +90,21 @@ def test_report_prints_an_explicit_telemetry_unavailable_state(capsys):
 
     output = capsys.readouterr().out
     assert "GPU telemetry unavailable: driver exposes no telemetry counter" in output
+
+
+def test_report_labels_per_process_engine_time(capsys):
+    result = SimpleNamespace(lines=(), undecoded_regions=0, filtered_regions=0)
+    device = ProofDevice(0, "Test GPU", 0x1002, 0x73FF)
+    proof = ProofResult(
+        provider="drm-fdinfo",
+        scope="process",
+        selected_devices=(device,),
+        samples=(ProofSample(device, "drm-engine-compute", 2_500_000),),
+        supported=True,
+    )
+
+    cli._report(result, 10.0, [], proof)
+
+    output = capsys.readouterr().out
+    assert "GPU activity (drm-fdinfo, process-wide)" in output
+    assert "drm-engine-compute: +2.5 ms" in output

@@ -110,8 +110,11 @@ PaddleOCR cannot use this GPU at all: `is_compiled_with_cuda()` and
 
 ## That it really is Vulkan
 
-`benchmarks/gpu_proof.py` reads this process's own amdgpu fdinfo counters:
-~1.2-1.3 s of `drm-engine-compute` per ~700 ms read, ~721 MiB VRAM held.
+The CLI and `benchmarks/gpu_proof.py` read this process's own DRM fdinfo
+engine counters when the driver supplies them: ~1.2-1.3 s of
+`drm-engine-compute` per ~700 ms read, ~721 MiB VRAM held. This is preferred
+proof because it excludes other processes. AMD `gpu_busy_percent` remains an
+explicitly system-wide fallback when fdinfo lacks engine counters.
 `benchmarks/vulkan_vs_cpu.py` runs the same models with the Vulkan knob off:
 identical output, GPU ~1.6× faster for v6-medium. `benchmarks/phase_timings.py`
 splits a read: ~38 ms detection, ~1 ms cropping, ~600 ms recognition —

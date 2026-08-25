@@ -9,6 +9,7 @@ which is why it lives here and not in the CLI that happens to print it
 from __future__ import annotations
 
 import contextlib
+import re
 import threading
 import time
 from collections.abc import Iterator, Sequence
@@ -20,6 +21,7 @@ from .device import VulkanDevice
 
 SAMPLE_INTERVAL_S = 0.02
 ProofScope = Literal["process", "system"]
+FdinfoSnapshot = dict[tuple[str, str, str], tuple["ProofDevice", dict[str, int]]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +85,16 @@ class ProofResult:
     @property
     def activity_observed(self) -> bool:
         return self.supported and any(sample.value > 0 for sample in self.matching_samples)
+
+
+@dataclass(slots=True)
+class ProofCapture:
+    result: ProofResult | None = None
+
+    def finished_result(self) -> ProofResult:
+        if self.result is None:
+            raise RuntimeError("proof capture has not finished")
+        return self.result
 
 
 def gpu_busy_paths() -> list[Path]:
@@ -174,6 +186,126 @@ def _has_ambiguous_pci_identity(
     return False
 
 
+def drm_fdinfo_snapshot(
+    fdinfo_root: Path = Path("/proc/self/fdinfo"),
+    pci_root: Path = Path("/sys/bus/pci/devices"),
+) -> FdinfoSnapshot:
+    """Read one de-duplicated snapshot of per-process DRM engine counters."""
+    clients: FdinfoSnapshot = {}
+    try:
+        paths = tuple(fdinfo_root.iterdir())
+    except OSError:
+        return clients
+    for path in paths:
+        try:
+            text = path.read_text()
+        except OSError:
+            continue
+        driver = _fdinfo_field(text, "drm-driver")
+        client = _fdinfo_field(text, "drm-client-id")
+        pdev = _fdinfo_field(text, "drm-pdev")
+        if driver is None or client is None or pdev is None:
+            continue
+        counters = {
+            metric: int(value)
+            for metric, value in re.findall(r"^(drm-engine-[^:]+):\s+(\d+)\s+ns", text, re.M)
+        }
+        if not counters:
+            continue
+        device_path = pci_root / pdev
+        device = ProofDevice(
+            runtime_index=None,
+            name=f"{driver}:{pdev}",
+            vendor_id=_read_hex(device_path / "vendor"),
+            device_id=_read_hex(device_path / "device"),
+            drm_node=pdev,
+        )
+        key = (driver, client, pdev)
+        if key not in clients:
+            clients[key] = device, counters
+        else:
+            previous_device, previous = clients[key]
+            clients[key] = previous_device, {
+                metric: max(previous.get(metric, 0), counters.get(metric, 0))
+                for metric in set(previous) | set(counters)
+            }
+    return clients
+
+
+def _fdinfo_field(text: str, key: str) -> str | None:
+    match = re.search(rf"^{re.escape(key)}:\s*(\S+)", text, re.M)
+    return match.group(1) if match is not None else None
+
+
+def _read_hex(path: Path) -> int | None:
+    try:
+        return int(path.read_text().strip(), 16)
+    except (OSError, ValueError):
+        return None
+
+
+def process_fdinfo_result(
+    devices: Sequence[VulkanDevice],
+    before: FdinfoSnapshot,
+    after: FdinfoSnapshot,
+) -> ProofResult:
+    """Return per-process engine-time deltas attributable to selected devices."""
+    selected = tuple(ProofDevice.from_vulkan(device) for device in devices)
+    samples = []
+    for key in sorted(set(before) | set(after)):
+        entry = after.get(key) or before.get(key)
+        if entry is None:
+            continue
+        device, _counters = entry
+        old = before.get(key, (device, {}))[1]
+        new = after.get(key, (device, {}))[1]
+        for metric in sorted(set(old) | set(new)):
+            delta = max(0, new.get(metric, 0) - old.get(metric, 0))
+            samples.append(ProofSample(device, metric, delta))
+    candidate = ProofResult(
+        provider="drm-fdinfo",
+        scope="process",
+        selected_devices=selected,
+        samples=tuple(samples),
+        supported=True,
+    )
+    if not candidate.matching_samples:
+        return ProofResult(
+            provider=candidate.provider,
+            scope=candidate.scope,
+            selected_devices=selected,
+            samples=candidate.samples,
+            supported=False,
+            unavailable_reason="DRM fdinfo exposes no engine counters for the selected device",
+        )
+    if _has_ambiguous_pci_identity(selected, candidate.samples):
+        return ProofResult(
+            provider=candidate.provider,
+            scope=candidate.scope,
+            selected_devices=selected,
+            samples=candidate.samples,
+            supported=False,
+            unavailable_reason="multiple DRM devices share the selected PCI identity",
+        )
+    return candidate
+
+
+def preferred_proof_result(process: ProofResult, system: ProofResult) -> ProofResult:
+    """Prefer attributable process counters; AMD system telemetry is fallback."""
+    if process.supported:
+        return process
+    if system.supported:
+        return system
+    return ProofResult(
+        provider="none",
+        scope="process",
+        selected_devices=process.selected_devices,
+        samples=(),
+        supported=False,
+        unavailable_reason=f"{process.unavailable_reason}; {system.unavailable_reason}",
+    )
+
+
 def _sample(stop: threading.Event, samples: dict[Path, list[int]]) -> None:
     paths = list(samples)
     while not stop.is_set():
@@ -201,12 +333,38 @@ def busy_sampler(paths: Sequence[Path] | None = None) -> Iterator[dict[Path, lis
         sampler.join(timeout=1)
 
 
+@contextlib.contextmanager
+def proof_sampler(
+    devices: Sequence[VulkanDevice],
+    *,
+    fdinfo_root: Path = Path("/proc/self/fdinfo"),
+    pci_root: Path = Path("/sys/bus/pci/devices"),
+    busy_paths: Sequence[Path] | None = None,
+) -> Iterator[ProofCapture]:
+    """Capture preferred per-process proof and AMD's system-wide fallback."""
+    before = drm_fdinfo_snapshot(fdinfo_root, pci_root)
+    capture = ProofCapture()
+    with busy_sampler(busy_paths) as busy_samples:
+        try:
+            yield capture
+        finally:
+            after = drm_fdinfo_snapshot(fdinfo_root, pci_root)
+            process = process_fdinfo_result(devices, before, after)
+            system = system_busy_result(devices, busy_samples)
+            capture.result = preferred_proof_result(process, system)
+
+
 __all__ = [
     "ProofDevice",
+    "ProofCapture",
     "ProofResult",
     "ProofSample",
     "ProofScope",
     "busy_sampler",
+    "drm_fdinfo_snapshot",
     "gpu_busy_paths",
+    "preferred_proof_result",
+    "process_fdinfo_result",
+    "proof_sampler",
     "system_busy_result",
 ]
