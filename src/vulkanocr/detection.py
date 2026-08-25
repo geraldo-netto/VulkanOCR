@@ -31,6 +31,10 @@ UNCLIP_RATIO = 1.5
 MIN_SIZE_FACTOR = 3.0
 
 
+class DetectionOutputError(ValueError):
+    """The detector returned a tensor that is not its declared probability map."""
+
+
 @dataclass(frozen=True, slots=True)
 class TextRegion:
     """One detected text line as an oriented rectangle in image coordinates."""
@@ -87,9 +91,21 @@ def detect_regions(
     )
     padded.substract_mean_normalize(MEAN, NORM)
 
-    probability = np.array(extract_output(net, padded, blobs, stage="detection"))[0]
+    output = extract_output(net, padded, blobs, stage="detection")
+    probability = _probability_map(output, height + hpad, width + wpad)
 
     return _regions(probability, scale_x, scale_y, wpad, hpad)
+
+
+def _probability_map(output, expected_height: int, expected_width: int) -> np.ndarray:
+    """Validate and unwrap the detector's ``1 x height x width`` output."""
+    tensor = np.asarray(output)
+    expected = (1, expected_height, expected_width)
+    if tensor.shape != expected:
+        raise DetectionOutputError(
+            f"detection output has shape {tensor.shape}; expected probability map {expected}"
+        )
+    return tensor[0]
 
 
 def _scaled(width: int, height: int, target_size: int) -> tuple[int, int, float]:

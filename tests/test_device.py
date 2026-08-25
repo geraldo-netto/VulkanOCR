@@ -298,6 +298,21 @@ class TestEngineInputValidation:
         assert caught.value.code == "dictionary-mismatch"
         assert "5 classes" in caught.value.detail
 
+    def test_invalid_detection_output_is_a_stable_refusal(self, tmp_path, monkeypatch):
+        from vulkanocr.detection import DetectionOutputError
+        from vulkanocr.engine import OcrEngineError
+
+        def incompatible_output(*_args):
+            raise DetectionOutputError("detection output has shape (4,)")
+
+        monkeypatch.setattr("vulkanocr.engine.detect_regions", incompatible_output)
+        image = np.zeros((8, 8, 3), dtype=np.uint8)
+        with self.engine(tmp_path) as engine, pytest.raises(OcrEngineError) as caught:
+            engine.detect(image)
+
+        assert caught.value.code == "detection-output-invalid"
+        assert caught.value.detail == "detection output has shape (4,)"
+
 
 class TestInferenceOptionsAreApplied:
     _PRECISION_FIELDS = (

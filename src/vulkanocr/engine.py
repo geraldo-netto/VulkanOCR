@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-from .detection import detect_regions
+from .detection import DetectionOutputError, detect_regions
 from .device import select_hardware_device
 from .options import InferenceOptions, Precision
 from .orientation import classify_patch_orientation, rotate_patch
@@ -255,13 +255,16 @@ class OcrEngine:
         self._validated(rgb)
         if self._det is None:
             raise OcrEngineError("net-unloaded", "this engine was built without the detection net")
-        return detect_regions(
-            self._runtime,
-            self._det,
-            rgb,
-            self._target_size,
-            self._models.detector_blobs,
-        )
+        try:
+            return detect_regions(
+                self._runtime,
+                self._det,
+                rgb,
+                self._target_size,
+                self._models.detector_blobs,
+            )
+        except DetectionOutputError as error:
+            raise OcrEngineError("detection-output-invalid", str(error)) from error
 
     def crops(self, rgb: np.ndarray) -> list[tuple]:
         """Every detected region with its rectified 48-high patch, empties dropped."""

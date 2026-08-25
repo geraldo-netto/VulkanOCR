@@ -198,6 +198,31 @@ class TestContourScore:
         assert _contour_score(probability, contours[0]) == pytest.approx(0.8, abs=0.05)
 
 
+class TestDetectorOutputContract:
+    def test_one_probability_plane_is_unwrapped(self):
+        from vulkanocr.detection import _probability_map
+
+        output = np.zeros((1, 32, 64), dtype=np.float32)
+        assert _probability_map(output, 32, 64).shape == (32, 64)
+
+    @pytest.mark.parametrize(
+        "shape",
+        [
+            pytest.param((32, 64), id="rank-two"),
+            pytest.param((1, 1, 32, 64), id="rank-four"),
+            pytest.param((2, 32, 64), id="batch"),
+            pytest.param((1, 16, 64), id="height"),
+            pytest.param((1, 32, 16), id="width"),
+            pytest.param((1, 0, 64), id="empty"),
+        ],
+    )
+    def test_incompatible_probability_shapes_are_refused(self, shape):
+        from vulkanocr.detection import DetectionOutputError, _probability_map
+
+        with pytest.raises(DetectionOutputError, match="expected probability map"):
+            _probability_map(np.zeros(shape, dtype=np.float32), 32, 64)
+
+
 class TestCropRegion:
     def test_a_horizontal_region_rectifies_to_its_length_by_48(self):
         from vulkanocr.detection import TextRegion
