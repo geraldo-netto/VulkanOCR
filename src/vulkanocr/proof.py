@@ -133,11 +133,47 @@ def system_busy_result(
             supported=False,
             unavailable_reason="selected device exposes no gpu_busy_percent counter",
         )
+    path_devices = {path: _busy_device(path) for path in samples}
+    matching_paths = {
+        path
+        for path, observed in path_devices.items()
+        if any(device.matches(observed) for device in selected)
+    }
     proof_samples = tuple(
-        ProofSample(_busy_device(path), "gpu_busy_percent", value)
+        ProofSample(path_devices[path], "gpu_busy_percent", value)
         for path, values in samples.items()
         for value in values
     )
+    if not matching_paths:
+        return ProofResult(
+            provider="amd-gpu-busy-percent",
+            scope="system",
+            selected_devices=selected,
+            samples=proof_samples,
+            supported=False,
+            unavailable_reason="no gpu_busy_percent counter matches the selected device",
+        )
+    identity_samples = tuple(
+        ProofSample(device, "gpu_busy_percent", 0) for device in path_devices.values()
+    )
+    if _has_ambiguous_pci_identity(selected, identity_samples):
+        return ProofResult(
+            provider="amd-gpu-busy-percent",
+            scope="system",
+            selected_devices=selected,
+            samples=proof_samples,
+            supported=False,
+            unavailable_reason="multiple DRM devices share the selected PCI identity",
+        )
+    if not any(samples[path] for path in matching_paths):
+        return ProofResult(
+            provider="amd-gpu-busy-percent",
+            scope="system",
+            selected_devices=selected,
+            samples=proof_samples,
+            supported=False,
+            unavailable_reason="gpu_busy_percent counter produced no readable samples",
+        )
     candidate = ProofResult(
         provider="amd-gpu-busy-percent",
         scope="system",
@@ -145,24 +181,6 @@ def system_busy_result(
         samples=proof_samples,
         supported=True,
     )
-    if not candidate.matching_samples:
-        return ProofResult(
-            provider=candidate.provider,
-            scope=candidate.scope,
-            selected_devices=selected,
-            samples=proof_samples,
-            supported=False,
-            unavailable_reason="no gpu_busy_percent counter matches the selected device",
-        )
-    if _has_ambiguous_pci_identity(selected, proof_samples):
-        return ProofResult(
-            provider=candidate.provider,
-            scope=candidate.scope,
-            selected_devices=selected,
-            samples=proof_samples,
-            supported=False,
-            unavailable_reason="multiple DRM devices share the selected PCI identity",
-        )
     return candidate
 
 

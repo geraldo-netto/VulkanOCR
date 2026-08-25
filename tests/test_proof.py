@@ -2,6 +2,8 @@
 
 import time
 
+import pytest
+
 from vulkanocr.device import VulkanDevice
 from vulkanocr.proof import (
     ProofDevice,
@@ -11,6 +13,7 @@ from vulkanocr.proof import (
     drm_fdinfo_snapshot,
     preferred_proof_result,
     process_fdinfo_result,
+    proof_sampler,
     system_busy_result,
 )
 
@@ -146,3 +149,124 @@ def test_supported_system_counter_is_explicit_fallback_for_missing_fdinfo():
 
     assert result is system
     assert result.scope == "system"
+
+
+@pytest.mark.parametrize(
+    ("driver", "vendor", "device_id", "metric"),
+    [
+        ("amdgpu", 0x1002, 0x73FF, "drm-engine-compute"),
+        ("i915", 0x8086, 0x56A0, "drm-engine-render"),
+    ],
+)
+def test_amd_and_intel_fdinfo_engine_counters_are_supported(
+    tmp_path, driver, vendor, device_id, metric
+):
+    fdinfo = tmp_path / "fdinfo"
+    pci = tmp_path / "pci"
+    fdinfo.mkdir()
+    pdev = "0000:03:00.0"
+    device_path = pci / pdev
+    device_path.mkdir(parents=True)
+    (device_path / "vendor").write_text(f"0x{vendor:04x}\n")
+    (device_path / "device").write_text(f"0x{device_id:04x}\n")
+    record = fdinfo / "5"
+    prefix = (
+        f"drm-driver:\t{driver}\n"
+        f"drm-client-id:\t42\n"
+        f"drm-pdev:\t{pdev}\n"
+    )
+    record.write_text(f"{prefix}{metric}:\t100 ns\n")
+    selected = VulkanDevice(0, "Selected GPU", 0, vendor, device_id)
+
+    with proof_sampler(
+        (selected,), fdinfo_root=fdinfo, pci_root=pci, busy_paths=[]
+    ) as capture:
+        record.write_text(f"{prefix}{metric}:\t700 ns\n")
+
+    result = capture.finished_result()
+    assert result.provider == "drm-fdinfo"
+    assert result.scope == "process"
+    assert result.activity_observed is True
+    assert result.matching_samples == (
+        ProofSample(result.matching_samples[0].device, metric, 600),
+    )
+
+
+def test_amd_busy_percent_is_used_as_system_fallback(tmp_path):
+    fdinfo = tmp_path / "fdinfo"
+    fdinfo.mkdir()
+    counter = tmp_path / "drm/card0/device/gpu_busy_percent"
+    counter.parent.mkdir(parents=True)
+    counter.write_text("63\n")
+    (counter.parent / "vendor").write_text("0x1002\n")
+    (counter.parent / "device").write_text("0x73ff\n")
+    selected = VulkanDevice(0, "RX 6600 XT", 0, 0x1002, 0x73FF)
+
+    with proof_sampler((selected,), fdinfo_root=fdinfo, busy_paths=[counter]) as capture:
+        time.sleep(0.05)
+
+    result = capture.finished_result()
+    assert result.provider == "amd-gpu-busy-percent"
+    assert result.scope == "system"
+    assert result.activity_observed is True
+
+
+def test_nvidia_without_engine_or_busy_counters_is_explicitly_unavailable(tmp_path):
+    fdinfo = tmp_path / "fdinfo"
+    fdinfo.mkdir()
+    (fdinfo / "9").write_text(
+        "drm-driver:\tnvidia\n"
+        "drm-client-id:\t7\n"
+        "drm-pdev:\t0000:01:00.0\n"
+        "drm-memory-vram:\t1024 KiB\n"
+    )
+    selected = VulkanDevice(0, "NVIDIA GPU", 0, 0x10DE, 0x2684)
+
+    with proof_sampler((selected,), fdinfo_root=fdinfo, busy_paths=[]) as capture:
+        pass
+
+    result = capture.finished_result()
+    assert result.provider == "none"
+    assert result.supported is False
+    assert result.unavailable_reason is not None
+    assert "no engine counters" in result.unavailable_reason
+    assert "no gpu_busy_percent" in result.unavailable_reason
+
+
+def test_matching_counter_that_cannot_be_read_is_unavailable(tmp_path):
+    counter = tmp_path / "card0/device/gpu_busy_percent"
+    counter.parent.mkdir(parents=True)
+    (counter.parent / "vendor").write_text("0x1002\n")
+    (counter.parent / "device").write_text("0x73ff\n")
+    selected = VulkanDevice(0, "RX 6600 XT", 0, 0x1002, 0x73FF)
+
+    result = system_busy_result((selected,), {counter: []})
+
+    assert result.supported is False
+    assert result.unavailable_reason == "gpu_busy_percent counter produced no readable samples"
+
+
+def test_wrong_device_fdinfo_cannot_prove_selected_device(tmp_path):
+    fdinfo = tmp_path / "fdinfo"
+    pci = tmp_path / "pci"
+    fdinfo.mkdir()
+    other_path = pci / "0000:03:00.0"
+    other_path.mkdir(parents=True)
+    (other_path / "vendor").write_text("0x8086\n")
+    (other_path / "device").write_text("0x56a0\n")
+    (fdinfo / "5").write_text(
+        "drm-driver:\ti915\n"
+        "drm-client-id:\t42\n"
+        "drm-pdev:\t0000:03:00.0\n"
+        "drm-engine-render:\t700 ns\n"
+    )
+    snapshot = drm_fdinfo_snapshot(fdinfo, pci)
+    selected = VulkanDevice(0, "RX 6600 XT", 0, 0x1002, 0x73FF)
+
+    result = process_fdinfo_result((selected,), {}, snapshot)
+
+    assert result.supported is False
+    assert result.activity_observed is False
+    assert result.unavailable_reason == (
+        "DRM fdinfo exposes no engine counters for the selected device"
+    )

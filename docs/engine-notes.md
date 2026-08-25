@@ -17,7 +17,7 @@ src/vulkanocr/
   catalog.py      known model sets as data; default is PP-OCRv6 medium
   cli.py          the `vulkanocr` command
   parallel.py     one recognition process per GPU, work priced per assignment
-  proof.py        sysfs gpu_busy_percent sampling, as a context manager
+  proof.py        per-process DRM proof with an AMD system-wide fallback
 tests/            device policy and engine lifecycle (fake runtime),
                   CTC vectors, detection geometry, catalogue facts, the
                   assembler, the pool's dispatcher and refusals (GPU-free),

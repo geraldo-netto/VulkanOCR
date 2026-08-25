@@ -98,10 +98,18 @@ git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, 
 it with a quantized model profile.
 
 The command prints the device it chose, the lines with their coordinates and
-confidence, and attributable GPU telemetry while it works. Drivers without a
-usable counter print an explicit `GPU telemetry unavailable` reason instead
-of an empty section. The AMD `gpu_busy_percent` source is system-wide; the
-per-process provider is described in [the benchmark notes](docs/benchmarks.md).
+confidence, and attributable GPU telemetry while it works.
+
+| CLI telemetry state | Scope | Meaning |
+| --- | --- | --- |
+| `drm-fdinfo, process-wide` | This VulkanOCR process | Preferred on AMD and Intel when DRM engine counters exist. |
+| `amd-gpu-busy-percent, system-wide` | Whole selected AMD GPU | Fallback; activity may include other processes. |
+| `GPU telemetry unavailable: ... no engine counters ...` | None | Driver, including NVIDIA configurations without DRM engine accounting, exposes no supported process counter. |
+| `GPU telemetry unavailable: ... does not match ...` | None | Available telemetry belongs to another or ambiguously identical device and is not accepted as proof. |
+
+A supported provider can report zero activity; that differs from unsupported
+telemetry. Exact provider behavior and benchmark evidence live in
+[the benchmark notes](docs/benchmarks.md).
 
 ## Accuracy notes
 

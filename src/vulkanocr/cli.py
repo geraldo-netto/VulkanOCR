@@ -1,8 +1,8 @@
-"""MVP demo: read text from an image on the Vulkan GPU, prove where it ran.
+"""MVP demo: read text from an image on Vulkan and report attributable telemetry.
 
-Proof of GPU execution is direct: while recognition loops, the AMD DRM
-counter ``gpu_busy_percent`` of the selected card is sampled from sysfs
-(:mod:`vulkanocr.proof`). A software (llvmpipe) run cannot move that counter.
+Per-process DRM fdinfo engine counters are preferred. AMD's
+``gpu_busy_percent`` is a clearly labeled system-wide fallback; unsupported
+drivers and mismatched devices produce an explicit unavailable state.
 """
 
 from __future__ import annotations

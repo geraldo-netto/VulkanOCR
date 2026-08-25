@@ -108,3 +108,21 @@ def test_report_labels_per_process_engine_time(capsys):
     output = capsys.readouterr().out
     assert "GPU activity (drm-fdinfo, process-wide)" in output
     assert "drm-engine-compute: +2.5 ms" in output
+
+
+def test_report_labels_amd_fallback_as_system_wide(capsys):
+    result = SimpleNamespace(lines=(), undecoded_regions=0, filtered_regions=0)
+    device = ProofDevice(0, "Test GPU", 0x1002, 0x73FF)
+    proof = ProofResult(
+        provider="amd-gpu-busy-percent",
+        scope="system",
+        selected_devices=(device,),
+        samples=(ProofSample(device, "gpu_busy_percent", 73),),
+        supported=True,
+    )
+
+    cli._report(result, 10.0, [], proof)
+
+    output = capsys.readouterr().out
+    assert "GPU activity (amd-gpu-busy-percent, system-wide)" in output
+    assert "max 73%" in output
