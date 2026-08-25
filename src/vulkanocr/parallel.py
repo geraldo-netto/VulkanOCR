@@ -36,6 +36,7 @@ import numpy as np
 
 from .device import hardware_devices
 from .engine import OcrEngine, OcrEngineError, OcrModels, OcrResult, assemble_result
+from .options import InferenceOptions
 
 # One probe strip per worker, recognised twice at start-up: the second pass is
 # the seed price (ms per pixel column) the dispatcher plans with before it has
@@ -43,7 +44,13 @@ from .engine import OcrEngine, OcrEngineError, OcrModels, OcrResult, assemble_re
 _PROBE_COLUMNS = 96
 
 
-def _worker(device_index: int, models: OcrModels, use_fp16: bool, requests, replies) -> None:
+def _worker(
+    device_index: int,
+    models: OcrModels,
+    options: InferenceOptions,
+    requests,
+    replies,
+) -> None:
     """One process, one device, one engine; runs until it receives ``None``.
 
     Anything that raises is reported as an ``("error", ...)`` reply before the
@@ -57,7 +64,7 @@ def _worker(device_index: int, models: OcrModels, use_fp16: bool, requests, repl
         device = next(d for d in hardware_devices(ncnn) if d.index == device_index)
         # Recognition only: the worker never detects, and the detection
         # net's Vulkan allocations were dead weight on every device (VOCR-0042).
-        engine = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=device, nets=("rec",))
+        engine = OcrEngine(models, runtime=ncnn, options=options, device=device, nets=("rec",))
     except BaseException as error:  # noqa: BLE001 - the reply is the report
         replies.put(("error", device_index, repr(error)))
         raise
@@ -87,15 +94,29 @@ def _worker(device_index: int, models: OcrModels, use_fp16: bool, requests, repl
 class ParallelOcr:
     """One engine process per hardware device, work priced per assignment."""
 
-    def __init__(self, models: OcrModels, *, use_fp16: bool = False):
+    def __init__(
+        self,
+        models: OcrModels,
+        *,
+        use_fp16: bool | None = None,
+        options: InferenceOptions | None = None,
+    ):
         try:
             import ncnn  # noqa: PLC0415 - only to enumerate devices here
         except ImportError as error:  # pragma: no cover - environment boundary
             raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
+        if options is not None and use_fp16 is not None:
+            raise OcrEngineError("options-conflict", "options cannot be combined with use_fp16")
+        self._options = options or (InferenceOptions.fp16() if use_fp16 else InferenceOptions())
         devices = hardware_devices(ncnn)
         self._devices: list = []
         # Detection and single-device fallback stay in this process.
-        self._primary = OcrEngine(models, runtime=ncnn, use_fp16=use_fp16, device=devices[0])
+        self._primary = OcrEngine(
+            models,
+            runtime=ncnn,
+            options=self._options,
+            device=devices[0],
+        )
         self._requests: dict[int, Any] = {}
         self._names: dict[int, str] = {}
         self._cost: dict[int, float] = {}
@@ -118,7 +139,7 @@ class ParallelOcr:
                 channel = self._context.Queue()
                 process = self._context.Process(
                     target=_worker,
-                    args=(device.index, models, use_fp16, channel, self._replies),
+                    args=(device.index, models, self._options, channel, self._replies),
                     daemon=True,
                 )
                 process.start()

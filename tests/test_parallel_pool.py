@@ -194,19 +194,22 @@ def test_real_crops_refine_a_wrong_probe_seed():
 def test_a_failed_start_closes_the_primary_and_every_started_worker(monkeypatch):
     """A half-built pool leaks nothing (VOCR-0038)."""
 
-    from vulkanocr import parallel
+    from vulkanocr import InferenceOptions, parallel
 
     engines = []
+    engine_options = []
 
     class FakeEngine:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args, **kwargs):
             self.closed = False
             engines.append(self)
+            engine_options.append(kwargs["options"])
 
         def close(self):
             self.closed = True
 
     started = []
+    worker_options = []
     replies = _Replies()
     replies.put(("error", 1, "RuntimeError('the driver refused the queue')"))
     queues = iter([replies])
@@ -218,6 +221,7 @@ def test_a_failed_start_closes_the_primary_and_every_started_worker(monkeypatch)
         def Process(self, *, target, args, daemon):  # noqa: N802
             process = _Worker(alive=True)
             started.append(process)
+            worker_options.append(args[2])
             return process
 
     devices = [SimpleNamespace(index=0, name="Fast GPU"), SimpleNamespace(index=1, name="iGPU")]
@@ -225,13 +229,16 @@ def test_a_failed_start_closes_the_primary_and_every_started_worker(monkeypatch)
     monkeypatch.setattr(parallel, "hardware_devices", lambda _runtime: devices)
     monkeypatch.setattr(parallel.mp, "get_context", lambda _method: FakeContext())
 
+    options = InferenceOptions.int8()
     with pytest.raises(OcrEngineError) as refusal:
-        ParallelOcr(object())
+        ParallelOcr(object(), options=options)
     assert refusal.value.code == "worker-failed"
     # The ~700 MiB primary engine and every started worker were let go.
     assert [engine.closed for engine in engines] == [True]
     assert len(started) == 2
     assert all(not process.is_alive() for process in started)
+    assert engine_options == [options]
+    assert worker_options == [options, options]
 
 
 def _priced_read(costs: dict[int, float], replies: Queue):

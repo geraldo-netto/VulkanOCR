@@ -32,7 +32,6 @@
 | VOCR-0092 | open | high | s | Add deterministic visual variants combining multiple foreground/background colour palettes, font sizes and families, and non-text background objects without clipping text. |
 | VOCR-0093 | open | medium | s | Add configurable font discovery with script-coverage checks and record each corpus font's source, version, and redistribution licence. |
 | VOCR-0094 | open | high | s | Make corpus runners select the declared language/model per case and refuse result sets whose case ids differ from the manifest. |
-| VOCR-0096 | open | high | s | Propagate immutable inference options unchanged through `ParallelOcr` and every spawned recognition worker. |
 | VOCR-0097 | open | high | s | Add CLI and benchmark precision flags, result tags, help, and documentation that distinguish fp32, fp16, and quantized/int8 runs. |
 | VOCR-0099 | open | medium | s | Compose named model profiles from detector and recognizer specifications so language-specific or quantized recognizers reuse an existing detector. |
 | VOCR-0100 | open | medium | s | Migrate `CATALOG`, `PORT_FACTS`, constructors, exports, and catalog tests to composed model profiles without changing existing names or defaults. |
