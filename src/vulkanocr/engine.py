@@ -16,6 +16,7 @@ import numpy as np
 from .detection import DetectionOutputError, detect_regions
 from .device import VulkanDevice, select_hardware_device
 from .inference import NcnnInferenceError
+from .layout import reconstruct_whitespace
 from .options import InferenceOptions, Precision
 from .orientation import classify_patch_orientation, rotate_patch
 from .policy import FalsePositivePolicy, RecognitionContext
@@ -488,9 +489,10 @@ def assemble_result(
         if not text:
             undecoded += 1
             continue
-        if false_positive_policy is not None and not false_positive_policy.decide(
-            text, confidence, recognition_context
-        ).accepted:
+        if (
+            false_positive_policy is not None
+            and not false_positive_policy.decide(text, confidence, recognition_context).accepted
+        ):
             filtered += 1
             continue
         lines.append(
@@ -507,6 +509,7 @@ def assemble_result(
             )
         )
     lines.sort(key=lambda line: (line.center_y, line.center_x))
+    lines = list(reconstruct_whitespace(lines))
     return OcrResult(
         device_name=device_name,
         lines=tuple(lines),

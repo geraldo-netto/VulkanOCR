@@ -28,6 +28,7 @@ from .catalog import (
 )
 from .device import HardwareVulkanUnavailableError, select_hardware_device
 from .engine import OcrEngine, OcrEngineError, OcrLine, OcrModels, OcrResult
+from .layout import reconstruct_whitespace
 from .options import PRECISIONS, InferenceOptions, Precision, options_for_precision
 from .policy import FalsePositivePolicy, RecognitionContext
 
@@ -53,5 +54,6 @@ __all__ = [
     "models_for",
     "models_for_port",
     "options_for_precision",
+    "reconstruct_whitespace",
     "select_hardware_device",
 ]

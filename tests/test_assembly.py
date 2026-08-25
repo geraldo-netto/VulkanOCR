@@ -46,9 +46,7 @@ def test_labeled_icon_readings_are_filtered_but_labeled_cjk_text_is_retained():
     cases = json.loads(manifest.read_text(encoding="utf-8"))["cases"]
     negatives = [case for case in cases if case["content_label"].startswith("negative-")]
     positive = next(case for case in cases if case["content_label"] == "positive-cjk")
-    readings = frozenset(
-        reading for case in negatives for reading in case["known_false_readings"]
-    )
+    readings = frozenset(reading for case in negatives for reading in case["known_false_readings"])
     policy = FalsePositivePolicy(readings, below_confidence=0.6)
     recognised = [
         (_region(float(index), 20.0), (reading, 0.4))
@@ -64,7 +62,7 @@ def test_labeled_icon_readings_are_filtered_but_labeled_cjk_text_is_retained():
     cjk = assemble_result(
         "GPU",
         [
-            (_region(float(index), 20.0), (line, 0.4))
+            (_region(float(index * 200), 20.0), (line, 0.4))
             for index, line in enumerate(positive["lines"])
         ],
         false_positive_policy=policy,
