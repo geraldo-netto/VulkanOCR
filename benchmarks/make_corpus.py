@@ -148,6 +148,22 @@ SCRIPT_DOCUMENTS = [
             "license": NOTO_LICENSE,
         },
     },
+    {
+        "id": "arabic-rtl-clean",
+        "script": "Arab",
+        "language": "ar",
+        "direction": "rtl",
+        "lines": [
+            "الثعلب البني السريع يقفز فوق الكلب الكسول.",
+            "اختبار التشكيل: سَأَقْرَأُ نَصًّا واضحًا، رقم ٤٢!",
+        ],
+        "font_path": "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+        "font": {
+            "family": "Noto Sans Arabic",
+            "file": "NotoSansArabic-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    },
 ]
 
 

@@ -108,6 +108,33 @@
       "background_objects": [],
       "variant": "clean-36px",
       "image": "mandarin-han-clean.png"
+    },
+    {
+      "id": "arabic-rtl-clean",
+      "script": "Arab",
+      "language": "ar",
+      "direction": "rtl",
+      "lines": [
+        "الثعلب البني السريع يقفز فوق الكلب الكسول.",
+        "اختبار التشكيل: سَأَقْرَأُ نَصًّا واضحًا، رقم ٤٢!"
+      ],
+      "font": {
+        "family": "Noto Sans Arabic",
+        "file": "NotoSansArabic-Regular.ttf",
+        "license": "SIL Open Font License 1.1"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 717,
+        "height_px": 184
+      },
+      "background_objects": [],
+      "variant": "clean-36px",
+      "image": "arabic-rtl-clean.png"
     }
   ]
 }

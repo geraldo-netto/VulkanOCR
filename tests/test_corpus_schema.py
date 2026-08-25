@@ -90,3 +90,8 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     assert "简体中文" in mandarin["lines"][0]
     assert "繁體中文" in mandarin["lines"][1]
     assert (tmp_path / mandarin["image"]).is_file()
+    arabic = next(case for case in document["cases"] if case["language"] == "ar")
+    assert arabic["script"] == "Arab"
+    assert arabic["direction"] == "rtl"
+    assert "سَأَقْرَأُ" in arabic["lines"][1]
+    assert (tmp_path / arabic["image"]).is_file()
