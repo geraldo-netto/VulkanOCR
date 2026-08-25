@@ -1,7 +1,9 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "cases": [
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "russian-cyrillic-clean",
       "script": "Cyrl",
       "language": "ru",
@@ -41,6 +43,8 @@
       "image": "russian-cyrillic-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "russian-cyrillic-warm-small",
       "script": "Cyrl",
       "language": "ru",
@@ -101,6 +105,8 @@
       "image": "russian-cyrillic-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "russian-cyrillic-night-large",
       "script": "Cyrl",
       "language": "ru",
@@ -161,6 +167,8 @@
       "image": "russian-cyrillic-night-large.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "greek-clean",
       "script": "Grek",
       "language": "el",
@@ -200,6 +208,8 @@
       "image": "greek-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "greek-warm-small",
       "script": "Grek",
       "language": "el",
@@ -260,6 +270,8 @@
       "image": "greek-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "greek-night-large",
       "script": "Grek",
       "language": "el",
@@ -320,6 +332,8 @@
       "image": "greek-night-large.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "japanese-clean",
       "script": "Jpan",
       "language": "ja",
@@ -361,6 +375,8 @@
       "image": "japanese-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "japanese-warm-small",
       "script": "Jpan",
       "language": "ja",
@@ -423,6 +439,8 @@
       "image": "japanese-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "japanese-night-large",
       "script": "Jpan",
       "language": "ja",
@@ -485,6 +503,8 @@
       "image": "japanese-night-large.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "mandarin-han-clean",
       "script": "Hani",
       "language": "zh",
@@ -526,6 +546,8 @@
       "image": "mandarin-han-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "mandarin-han-warm-small",
       "script": "Hani",
       "language": "zh",
@@ -588,6 +610,8 @@
       "image": "mandarin-han-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "mandarin-han-night-large",
       "script": "Hani",
       "language": "zh",
@@ -650,6 +674,8 @@
       "image": "mandarin-han-night-large.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "arabic-rtl-clean",
       "script": "Arab",
       "language": "ar",
@@ -689,6 +715,8 @@
       "image": "arabic-rtl-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "arabic-rtl-warm-small",
       "script": "Arab",
       "language": "ar",
@@ -749,6 +777,8 @@
       "image": "arabic-rtl-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "arabic-rtl-night-large",
       "script": "Arab",
       "language": "ar",
@@ -809,6 +839,8 @@
       "image": "arabic-rtl-night-large.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "hebrew-rtl-clean",
       "script": "Hebr",
       "language": "he",
@@ -845,6 +877,8 @@
       "image": "hebrew-rtl-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "hebrew-rtl-warm-small",
       "script": "Hebr",
       "language": "he",
@@ -902,6 +936,8 @@
       "image": "hebrew-rtl-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "hebrew-rtl-night-large",
       "script": "Hebr",
       "language": "he",
@@ -959,6 +995,8 @@
       "image": "hebrew-rtl-night-large.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "georgian-mkhedruli-clean",
       "script": "Geor",
       "language": "ka",
@@ -998,6 +1036,8 @@
       "image": "georgian-mkhedruli-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "georgian-mkhedruli-warm-small",
       "script": "Geor",
       "language": "ka",
@@ -1058,6 +1098,8 @@
       "image": "georgian-mkhedruli-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "georgian-mkhedruli-night-large",
       "script": "Geor",
       "language": "ka",
@@ -1118,6 +1160,8 @@
       "image": "georgian-mkhedruli-night-large.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "azerbaijani-latin-clean",
       "script": "Latn",
       "language": "az",
@@ -1159,6 +1203,8 @@
       "image": "azerbaijani-latin-clean.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "azerbaijani-latin-warm-small",
       "script": "Latn",
       "language": "az",
@@ -1221,6 +1267,8 @@
       "image": "azerbaijani-latin-warm-small.png"
     },
     {
+      "content_label": "text",
+      "known_false_readings": [],
       "id": "azerbaijani-latin-night-large",
       "script": "Latn",
       "language": "az",
@@ -1281,6 +1329,175 @@
       },
       "variant": "night-44px-objects",
       "image": "azerbaijani-latin-night-large.png"
+    },
+    {
+      "content_label": "positive-cjk",
+      "known_false_readings": [],
+      "id": "positive-cjk-flower-enclosure",
+      "script": "Hani",
+      "language": "zh",
+      "direction": "ltr",
+      "lines": [
+        "花",
+        "回"
+      ],
+      "font": {
+        "family": "Noto Sans CJK SC",
+        "file": "NotoSansCJK-Regular.ttc#2",
+        "license": "SIL Open Font License 1.1",
+        "source": "https://github.com/notofonts",
+        "version": "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 52,
+        "width_px": 640,
+        "height_px": 218
+      },
+      "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "ch",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "chi_sim+chi_tra"
+        }
+      },
+      "variant": "positive-cjk-confusables",
+      "image": "positive-cjk-flower-enclosure.png"
+    },
+    {
+      "content_label": "negative-glyph-icon",
+      "known_false_readings": [
+        "花",
+        "回"
+      ],
+      "id": "negative-glyph-icons-flower-enclosure",
+      "script": "Zyyy",
+      "language": "und",
+      "direction": "ltr",
+      "lines": [],
+      "font": null,
+      "palette": {
+        "foreground": "#17212B",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": null,
+        "width_px": 360,
+        "height_px": 180
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            52,
+            42,
+            96,
+            96
+          ],
+          "fill": "#17212B"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            222,
+            42,
+            96,
+            96
+          ],
+          "fill": "#17212B"
+        }
+      ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "ch",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "chi_sim+chi_tra"
+        }
+      },
+      "variant": "glyph-icons-only",
+      "image": "negative-glyph-icons-flower-enclosure.png"
+    },
+    {
+      "content_label": "negative-background-object",
+      "known_false_readings": [
+        "花",
+        "回"
+      ],
+      "id": "negative-background-objects",
+      "script": "Zyyy",
+      "language": "und",
+      "direction": "ltr",
+      "lines": [],
+      "font": null,
+      "palette": {
+        "foreground": "#000000",
+        "background": "#F4F0E8"
+      },
+      "size": {
+        "font_px": null,
+        "width_px": 360,
+        "height_px": 180
+      },
+      "background_objects": [
+        {
+          "kind": "circle",
+          "bounds": [
+            10,
+            10,
+            18,
+            18
+          ],
+          "fill": "#FCA311"
+        },
+        {
+          "kind": "rectangle",
+          "bounds": [
+            278,
+            12,
+            70,
+            14
+          ],
+          "fill": "#8EC5D1"
+        },
+        {
+          "kind": "polygon",
+          "bounds": [
+            12,
+            150,
+            24,
+            18
+          ],
+          "fill": "#5BC0BE"
+        }
+      ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "ch",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "chi_sim+chi_tra"
+        }
+      },
+      "variant": "background-objects-only",
+      "image": "negative-background-objects.png"
     }
   ]
 }

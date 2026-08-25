@@ -383,6 +383,7 @@ class CorpusWriter:
         output.mkdir(parents=True, exist_ok=True)
 
     def add(self, case: dict, rgb: np.ndarray) -> None:
+        case = {"content_label": "text", "known_false_readings": [], **case}
         path = self.output / case["image"]
         if not cv2.imwrite(str(path), rgb[:, :, ::-1]):
             raise OSError(f"cannot write corpus image: {path}")
@@ -551,6 +552,102 @@ def _decorate_sample(
     return np.array(canvas), records
 
 
+def _negative_glyph_icons() -> tuple[np.ndarray, list[dict]]:
+    canvas = Image.new("RGB", (360, 180), "white")
+    draw = ImageDraw.Draw(canvas)
+    ink = "#17212B"
+    records = []
+    for center_x, center_y in ((100, 90),):
+        for left, top, right, bottom in (
+            (center_x - 12, center_y - 48, center_x + 12, center_y - 6),
+            (center_x - 12, center_y + 6, center_x + 12, center_y + 48),
+            (center_x - 48, center_y - 12, center_x - 6, center_y + 12),
+            (center_x + 6, center_y - 12, center_x + 48, center_y + 12),
+        ):
+            draw.ellipse((left, top, right, bottom), outline=ink, width=7)
+        draw.ellipse((center_x - 18, center_y - 18, center_x + 18, center_y + 18), fill=ink)
+        records.append({"kind": "circle", "bounds": [52, 42, 96, 96], "fill": ink})
+    draw.rectangle((222, 42, 318, 138), outline=ink, width=8)
+    draw.rectangle((246, 66, 294, 114), outline=ink, width=8)
+    records.append({"kind": "rectangle", "bounds": [222, 42, 96, 96], "fill": ink})
+    return np.array(canvas), records
+
+
+def _add_false_positive_samples(writer: CorpusWriter, resolver: FontResolver) -> None:
+    mandarin = next(document for document in SCRIPT_DOCUMENTS if document["language"] == "zh")
+    positive = resolver.document(
+        {**mandarin, "id": "positive-cjk-flower-enclosure", "lines": ["花", "回"]}
+    )
+    array = render_script_document(positive, font_px=52, pad=52)
+    height, width = array.shape[:2]
+    writer.add(
+        {
+            "id": positive["id"],
+            "script": positive["script"],
+            "language": positive["language"],
+            "direction": positive["direction"],
+            "lines": positive["lines"],
+            "font": positive["font"],
+            "palette": {"foreground": "#000000", "background": "#FFFFFF"},
+            "size": {"font_px": 52, "width_px": width, "height_px": height},
+            "background_objects": [],
+            "content_label": "positive-cjk",
+            "recognition": SCRIPT_RECOGNITION["zh"],
+            "variant": "positive-cjk-confusables",
+            "image": "positive-cjk-flower-enclosure.png",
+        },
+        array,
+    )
+
+    icons, objects = _negative_glyph_icons()
+    height, width = icons.shape[:2]
+    writer.add(
+        {
+            "id": "negative-glyph-icons-flower-enclosure",
+            "script": "Zyyy",
+            "language": "und",
+            "direction": "ltr",
+            "lines": [],
+            "font": None,
+            "palette": {"foreground": "#17212B", "background": "#FFFFFF"},
+            "size": {"font_px": None, "width_px": width, "height_px": height},
+            "background_objects": objects,
+            "content_label": "negative-glyph-icon",
+            "known_false_readings": ["花", "回"],
+            "recognition": SCRIPT_RECOGNITION["zh"],
+            "variant": "glyph-icons-only",
+            "image": "negative-glyph-icons-flower-enclosure.png",
+        },
+        icons,
+    )
+
+    blank = np.full((180, 360, 3), 255, dtype=np.uint8)
+    objects_image, objects = _decorate_sample(
+        blank,
+        {"foreground": "#000000", "background": "#F4F0E8"},
+        ("circle", "rectangle", "polygon"),
+    )
+    writer.add(
+        {
+            "id": "negative-background-objects",
+            "script": "Zyyy",
+            "language": "und",
+            "direction": "ltr",
+            "lines": [],
+            "font": None,
+            "palette": {"foreground": "#000000", "background": "#F4F0E8"},
+            "size": {"font_px": None, "width_px": 360, "height_px": 180},
+            "background_objects": objects,
+            "content_label": "negative-background-object",
+            "known_false_readings": ["花", "回"],
+            "recognition": SCRIPT_RECOGNITION["zh"],
+            "variant": "background-objects-only",
+            "image": "negative-background-objects.png",
+        },
+        objects_image,
+    )
+
+
 def make_script_samples(
     output: pathlib.Path, font_roots: Sequence[pathlib.Path] = ()
 ) -> int:
@@ -597,6 +694,7 @@ def make_script_samples(
                 },
                 array,
             )
+    _add_false_positive_samples(writer, resolver)
     writer.finish()
     print(f"{len(writer.cases)} committed script samples -> {output}")
     return 0

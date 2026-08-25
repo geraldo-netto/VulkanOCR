@@ -8,6 +8,7 @@ import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "benchmarks"))
 
+from corpus_schema import SCHEMA_VERSION
 from corpusrun import run_corpus, validate_case_id_parity
 
 
@@ -88,7 +89,7 @@ def test_an_empty_results_document_is_refused_by_engine_name(tmp_path):
     manifest.write_text(
         json.dumps(
             {
-                "schema_version": 2,
+                "schema_version": SCHEMA_VERSION,
                 "cases": [{"id": "expected", "variant": "clean"}],
             }
         ),

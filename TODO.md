@@ -5,7 +5,6 @@
 | id | status | severity | effort | description |
 | --- | --- | --- | --- | --- |
 | VOCR-0076 | open | medium | s | Return and print an explicit telemetry-unavailable proof state instead of an empty `gpu_busy_percent` section on drivers without that counter. |
-| VOCR-0078 | open | medium | s | Build labeled positive-CJK and negative glyph-icon/background-object cases that reproduce false readings such as `花` and `回`. |
 | VOCR-0079 | open | medium | xs | Define and document a geometry-based word-gap heuristic, including punctuation and right-to-left behavior, before adding whitespace postprocessing. |
 | VOCR-0080 | open | low | s | Unify benchmark engine lifecycle and no-text precondition handling in a shared harness; several scripts manually close resources only on success, while batching scripts crash on blank images through `min`, division by zero, or a zero range step. |
 | VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |

@@ -39,6 +39,8 @@ def _case() -> dict:
         "palette": {"foreground": "#000000", "background": "#FFFFFF"},
         "size": {"font_px": 28, "width_px": 900, "height_px": 140},
         "background_objects": [],
+        "content_label": "text",
+        "known_false_readings": [],
         "recognition": {
             "vulkanocr": {"model": "v6-medium"},
             "paddleocr": {"language": "en", "model": "PP-OCRv6"},
@@ -49,12 +51,12 @@ def _case() -> dict:
     }
 
 
-def test_complete_version_three_manifest_is_valid():
-    validate_manifest({"schema_version": 3, "cases": [_case()]})
+def test_complete_version_four_manifest_is_valid():
+    validate_manifest({"schema_version": 4, "cases": [_case()]})
 
 
 def test_case_metadata_is_required_by_the_schema():
-    document = {"schema_version": 3, "cases": [_case()]}
+    document = {"schema_version": 4, "cases": [_case()]}
     del document["cases"][0]["background_objects"]
 
     with pytest.raises(ValueError, match="background_objects"):
@@ -63,16 +65,16 @@ def test_case_metadata_is_required_by_the_schema():
 
 def test_unknown_manifest_version_is_refused(tmp_path):
     path = tmp_path / "ground-truth.json"
-    path.write_text('{"schema_version": 4, "cases": []}', encoding="utf-8")
+    path.write_text('{"schema_version": 5, "cases": []}', encoding="utf-8")
 
-    with pytest.raises(ValueError, match="schema version 3"):
+    with pytest.raises(ValueError, match="schema version 4"):
         load_manifest(path)
 
 
 def test_duplicate_case_ids_are_refused():
     duplicate = deepcopy(_case())
     with pytest.raises(ValueError, match="case ids must be unique"):
-        validate_manifest({"schema_version": 3, "cases": [_case(), duplicate]})
+        validate_manifest({"schema_version": 4, "cases": [_case(), duplicate]})
 
 
 def test_runner_refuses_cases_without_its_declared_model():
@@ -196,12 +198,14 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     for letter in "ƏĞİÖŞÜÇ":
         assert letter in azerbaijani["lines"][0]
     assert (tmp_path / azerbaijani["image"]).is_file()
-    assert len(document["cases"]) == 24
+    assert len(document["cases"]) == 27
     assert all("recognition" in case for case in document["cases"])
-    assert {case["size"]["font_px"] for case in document["cases"]} == {28, 36, 44}
-    assert len({tuple(case["palette"].values()) for case in document["cases"]}) == 3
-    assert len({case["font"]["family"] for case in document["cases"]}) >= 8
-    assert {item["kind"] for case in document["cases"] for item in case["background_objects"]} == {
+    text_cases = [case for case in document["cases"] if case["content_label"] == "text"]
+    assert len(text_cases) == 24
+    assert {case["size"]["font_px"] for case in text_cases} == {28, 36, 44}
+    assert len({tuple(case["palette"].values()) for case in text_cases}) == 3
+    assert len({case["font"]["family"] for case in text_cases}) >= 8
+    assert {item["kind"] for case in text_cases for item in case["background_objects"]} == {
         "circle",
         "rectangle",
         "polygon",
@@ -214,6 +218,23 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
         assert all(image.getpixel((x, height - 1)) == background for x in range(width))
         assert all(image.getpixel((0, y)) == background for y in range(height))
         assert all(image.getpixel((width - 1, y)) == background for y in range(height))
+
+
+def test_script_corpus_labels_cjk_text_and_non_text_confusables(tmp_path):
+    assert make_script_samples(tmp_path) == 0
+    cases = load_manifest(tmp_path / "ground-truth.json")["cases"]
+
+    positive = next(case for case in cases if case["content_label"] == "positive-cjk")
+    assert positive["lines"] == ["花", "回"]
+    assert positive["known_false_readings"] == []
+
+    negatives = [case for case in cases if case["content_label"].startswith("negative-")]
+    assert {case["content_label"] for case in negatives} == {
+        "negative-glyph-icon",
+        "negative-background-object",
+    }
+    assert all(case["lines"] == [] for case in negatives)
+    assert all(case["known_false_readings"] == ["花", "回"] for case in negatives)
 
 
 def test_orientation_generator_writes_all_cardinal_cases(tmp_path):
