@@ -17,6 +17,10 @@ holdout is still the honest acceptance corpus; this is not it and says so.
 total length (never a mean of per-image rates), whitespace-normalised, NFC,
 reading order ignored. It is unit-tested in `tests/test_scoring.py`.
 
+Accuracy policy: reading order is excluded. Detector traversal is not a text
+recognition error; line content and within-line character/word order remain
+significant. Result documents still preserve engine order for diagnostics.
+
 ```sh
 .venv/bin/python benchmarks/make_corpus.py /tmp/corpus
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium
