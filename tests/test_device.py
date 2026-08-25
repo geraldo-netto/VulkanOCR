@@ -1,5 +1,6 @@
 """Device policy: hardware only, discrete preferred, software refused."""
 
+import numpy as np
 import pytest
 
 from vulkanocr.device import HardwareVulkanUnavailableError, select_hardware_device
@@ -209,3 +210,50 @@ class TestHalfAnEngineIsAskedFor:
 
         engine = OcrEngine(models, runtime=runtime, nets=("rec",))
         assert engine._det is None and engine._rec is not None
+
+
+class TestEngineInputValidation:
+    def engine(self, tmp_path, **options):
+        from vulkanocr.engine import OcrEngine, OcrModels
+
+        runtime = FakeRuntime([FakeInfo("Radeon", 0)])
+        runtime.Net = _FakeNet
+        for name in ("model-det", "model-rec"):
+            (tmp_path / f"{name}.param").write_text("7767517\n")
+            (tmp_path / f"{name}.bin").write_bytes(b"")
+        keys = tmp_path / "keys.txt"
+        keys.write_text("a\nb\n")
+        models = OcrModels(tmp_path / "model-det.param", tmp_path / "model-rec.param", keys)
+        return OcrEngine(models, runtime=runtime, **options)
+
+    @pytest.mark.parametrize("shape", [(0, 4, 3), (4, 0, 3)])
+    def test_empty_image_dimensions_are_refused_before_detection(self, tmp_path, shape):
+        from vulkanocr.engine import OcrEngineError
+
+        with self.engine(tmp_path) as engine, pytest.raises(OcrEngineError) as caught:
+            engine.detect(np.empty(shape, dtype=np.uint8))
+        assert caught.value.code == "image-invalid"
+
+    @pytest.mark.parametrize("target_size", [0, -1, "not-an-integer", None])
+    def test_target_size_must_be_a_positive_integer(self, tmp_path, target_size):
+        from vulkanocr.engine import OcrEngineError
+
+        with pytest.raises(OcrEngineError) as caught:
+            self.engine(tmp_path, target_size=target_size)
+        assert caught.value.code == "target-size-invalid"
+
+    @pytest.mark.parametrize(
+        "patch",
+        [
+            pytest.param(np.zeros((48, 0, 3), dtype=np.uint8), id="empty"),
+            pytest.param(np.zeros((47, 10, 3), dtype=np.uint8), id="height"),
+            pytest.param(np.zeros((48, 10), dtype=np.uint8), id="channels"),
+            pytest.param(np.zeros((48, 10, 3), dtype=np.float32), id="dtype"),
+        ],
+    )
+    def test_invalid_recognition_patches_are_refused_before_ncnn(self, tmp_path, patch):
+        from vulkanocr.engine import OcrEngineError
+
+        with self.engine(tmp_path) as engine, pytest.raises(OcrEngineError) as caught:
+            engine.recognise(patch)
+        assert caught.value.code == "patch-invalid"

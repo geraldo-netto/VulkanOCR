@@ -163,7 +163,7 @@ class OcrEngine:
         if not nets or any(name not in ("det", "rec") for name in nets):
             raise OcrEngineError("nets-invalid", "nets must name 'det', 'rec', or both")
         self._models = models.validated(nets)
-        self._target_size = int(target_size)
+        self._target_size = self._validated_target_size(target_size)
         # Constructor knobs rather than a subclass seam: two benchmarks used
         # to override _load_net for exactly these two flags, and both copies
         # dropped the load-return checks and the device pinning on the way.
@@ -238,6 +238,7 @@ class OcrEngine:
 
     def recognise(self, patch: np.ndarray) -> tuple[str, float]:
         """One rectified patch through the recognition net and the CTC decode."""
+        self._validated_patch(patch)
         if self._rec is None:
             raise OcrEngineError(
                 "net-unloaded", "this engine was built without the recognition net"
@@ -253,6 +254,7 @@ class OcrEngine:
 
     def logits(self, patch: np.ndarray) -> np.ndarray:
         """One patch's raw CTC logits, for callers that decode segments themselves."""
+        self._validated_patch(patch)
         if self._rec is None:
             raise OcrEngineError(
                 "net-unloaded", "this engine was built without the recognition net"
@@ -269,6 +271,34 @@ class OcrEngine:
             raise OcrEngineError("image-invalid", "expected an RGB HxWx3 array")
         if rgb.dtype != np.uint8:
             raise OcrEngineError("image-invalid", "expected uint8 pixels")
+        if rgb.shape[0] < 1 or rgb.shape[1] < 1:
+            raise OcrEngineError("image-invalid", "expected non-empty image dimensions")
+
+    @staticmethod
+    def _validated_patch(patch: np.ndarray) -> None:
+        if (
+            not isinstance(patch, np.ndarray)
+            or patch.ndim != 3
+            or patch.shape[2] != 3
+            or patch.shape[0] != 48
+        ):
+            raise OcrEngineError("patch-invalid", "expected an RGB 48xWx3 recognition patch")
+        if patch.dtype != np.uint8:
+            raise OcrEngineError("patch-invalid", "expected uint8 patch pixels")
+        if patch.shape[1] < 1:
+            raise OcrEngineError("patch-invalid", "expected a non-empty recognition patch")
+
+    @staticmethod
+    def _validated_target_size(target_size: Any) -> int:
+        try:
+            value = int(target_size)
+        except (TypeError, ValueError) as error:
+            raise OcrEngineError(
+                "target-size-invalid", "target_size must be a positive integer"
+            ) from error
+        if value <= 0:
+            raise OcrEngineError("target-size-invalid", "target_size must be a positive integer")
+        return value
 
     def read(self, rgb: np.ndarray) -> OcrResult:
         """Recognise every text line in an RGB uint8 array."""
