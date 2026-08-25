@@ -1,9 +1,9 @@
 """Known ncnn model sets, as data.
 
-Every port differs in three facts the engine cannot infer: where its files
-live, what its tensors are called, and whether its dictionary carries the CTC
-blank as its own first entry. Recording them here keeps the engine free of
-per-model branches — adding a port is a new record, not new code.
+Every component owns facts the engine cannot infer: where its files live,
+what its tensors are called, whether a recognizer dictionary carries the CTC
+blank, and any hard precision requirement. Recording them here keeps the
+engine free of per-model branches — adding a port is data, not new code.
 
 Provenance:
 
@@ -138,7 +138,7 @@ class ModelProfile:
         )
 
 
-PROFILES: dict[str, ModelProfile] = {
+CATALOG: dict[str, ModelProfile] = {
     "v6-medium": ModelProfile(
         DETECTORS["v6-medium-det"],
         RECOGNIZERS["v6-medium-rec"],
@@ -160,64 +160,6 @@ PROFILES: dict[str, ModelProfile] = {
     "v5-mobile": ModelProfile(
         DETECTORS["v5-mobile-det"],
         RECOGNIZERS["v5-mobile-rec"],
-        "previous generation, kept for comparison",
-    ),
-}
-
-
-@dataclass(frozen=True, slots=True)
-class ModelSpec:
-    """One installable model set, relative to a models root."""
-
-    det: str
-    rec: str
-    dictionary: str
-    blobs: tuple[str, str]
-    dictionary_includes_blank: bool
-    orientation: str | None
-    orientation_blobs: tuple[str, str]
-    note: str
-
-
-CATALOG: dict[str, ModelSpec] = {
-    "v6-medium": ModelSpec(
-        f"{_AVAFLY}/PP_OCRv6_medium_det.param",
-        f"{_AVAFLY}/PP_OCRv6_medium_rec.param",
-        f"{_AVAFLY}/ppocr_keys_v6.txt",
-        ("input", "output"),
-        True,
-        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
-        ("input", "output"),
-        "current generation, highest accuracy, ~1.0 s per page here",
-    ),
-    "v6-small": ModelSpec(
-        f"{_AVAFLY}/PP_OCRv6_small_det.param",
-        f"{_AVAFLY}/PP_OCRv6_small_rec.param",
-        f"{_AVAFLY}/ppocr_keys_v6.txt",
-        ("input", "output"),
-        True,
-        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
-        ("input", "output"),
-        "balanced tier",
-    ),
-    "v6-tiny": ModelSpec(
-        f"{_AVAFLY}/PP_OCRv6_tiny_det.param",
-        f"{_AVAFLY}/PP_OCRv6_tiny_rec.param",
-        f"{_AVAFLY}/ppocr_keys_v6_tiny.txt",
-        ("input", "output"),
-        True,
-        f"{_AVAFLY}/PP_LCNet_x0_25_textline_ori.param",
-        ("input", "output"),
-        "fastest tier, 49 languages, ~0.37 s per page here",
-    ),
-    "v5-mobile": ModelSpec(
-        f"{_NIHUI}/PP_OCRv5_mobile_det.ncnn.param",
-        f"{_NIHUI}/PP_OCRv5_mobile_rec.ncnn.param",
-        _PACKAGED_KEYS,
-        ("in0", "out0"),
-        False,
-        None,
-        ("input", "output"),
         "previous generation, kept for comparison",
     ),
 }
@@ -252,15 +194,12 @@ def _dictionary_path(spec_dictionary: str, base: Path) -> Path:
     return base / spec_dictionary
 
 
-# The per-port facts an external consumer needs when it holds model files
-# outside this catalog's clone layout (VOCR-0061): omnitensor's adapters
-# were each restating the blob names and the blank convention — the two
-# facts that produce fluent-looking nonsense when wrong — so a port drift
-# would have broken three codebases silently. Name the port; inherit its
-# facts.
-PORT_FACTS: dict[str, tuple[tuple[str, str], bool]] = {
-    "avafly-v6": (("input", "output"), True),
-    "nihui-v5": (("in0", "out0"), False),
+# The per-port components an external consumer needs when it holds model
+# files outside this catalog's clone layout (VOCR-0061). Naming the port
+# inherits its blob, blank, and precision facts without copying paths.
+PORT_FACTS: dict[str, tuple[DetectorSpec, RecognizerSpec]] = {
+    "avafly-v6": (DETECTORS["v6-medium-det"], RECOGNIZERS["v6-medium-rec"]),
+    "nihui-v5": (DETECTORS["v5-mobile-det"], RECOGNIZERS["v5-mobile-rec"]),
 }
 
 
@@ -272,7 +211,7 @@ def models_for_port(
 ) -> OcrModels:
     """An :class:`OcrModels` from explicit paths and a named port's facts."""
     try:
-        blobs, includes_blank = PORT_FACTS[port]
+        detector, recognizer = PORT_FACTS[port]
     except KeyError:
         known = ", ".join(sorted(PORT_FACTS))
         raise ValueError(f"unknown model port {port!r}; known ports: {known}") from None
@@ -280,25 +219,34 @@ def models_for_port(
         det_param=Path(det_param),
         rec_param=Path(rec_param),
         dictionary=Path(dictionary),
-        blobs=blobs,
-        dictionary_includes_blank=includes_blank,
+        blobs=detector.blobs,
+        recognizer_blobs=recognizer.blobs,
+        dictionary_includes_blank=recognizer.dictionary_includes_blank,
+        detector_required_precision=detector.required_precision,
+        recognizer_required_precision=recognizer.required_precision,
     )
 
 
 def models_for(name: str = DEFAULT_MODEL, root: Path | None = None) -> OcrModels:
     """Build an :class:`OcrModels` record for a catalogued model set."""
     try:
-        spec = CATALOG[name]
+        profile = CATALOG[name]
     except KeyError:
         known = ", ".join(sorted(CATALOG))
         raise ValueError(f"unknown model set {name!r}; known sets: {known}") from None
     base = Path(root) if root is not None else default_models_root()
+    detector = profile.detector
+    recognizer = profile.recognizer
     return OcrModels(
-        det_param=base / spec.det,
-        rec_param=base / spec.rec,
-        dictionary=_dictionary_path(spec.dictionary, base),
-        blobs=spec.blobs,
-        dictionary_includes_blank=spec.dictionary_includes_blank,
-        orientation_param=base / spec.orientation if spec.orientation is not None else None,
-        orientation_blobs=spec.orientation_blobs,
+        det_param=base / detector.param,
+        rec_param=base / recognizer.param,
+        dictionary=_dictionary_path(recognizer.dictionary, base),
+        blobs=detector.blobs,
+        recognizer_blobs=recognizer.blobs,
+        dictionary_includes_blank=recognizer.dictionary_includes_blank,
+        orientation_param=(base / profile.orientation if profile.orientation is not None else None),
+        orientation_blobs=profile.orientation_blobs,
+        orientation_labels=profile.orientation_labels,
+        detector_required_precision=detector.required_precision,
+        recognizer_required_precision=recognizer.required_precision,
     )

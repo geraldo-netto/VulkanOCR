@@ -15,7 +15,7 @@ import numpy as np
 
 from .detection import detect_regions
 from .device import select_hardware_device
-from .options import InferenceOptions
+from .options import InferenceOptions, Precision
 from .orientation import classify_patch_orientation, rotate_patch
 from .recognition import CtcDictionaryMismatchError, crop_region, decode_ctc, patch_logits
 
@@ -33,21 +33,36 @@ class OcrEngineError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class OcrModels:
-    """Paths to the ncnn model pair, the class dictionary, and the blob names.
+    """Resolved model paths and component-specific runtime facts.
 
     Ports differ in tensor naming: the nihui PP-OCRv5 graphs use ``in0``/``out0``,
     the Avafly PP-OCRv6 graphs use ``input``/``output``. Naming is data, not a
-    code branch, so a new port is a new record rather than a new engine.
+    code branch, so a new port is a new record rather than a new engine. ``blobs``
+    remains the detector and legacy shared convention; ``recognizer_blobs``
+    overrides it when independently composed components use different names.
     """
 
     det_param: Path
     rec_param: Path
     dictionary: Path
-    blobs: tuple = ("in0", "out0")
+    blobs: tuple[str, str] = ("in0", "out0")
     dictionary_includes_blank: bool = False
     orientation_param: Path | None = None
     orientation_blobs: tuple[str, str] = ("input", "output")
     orientation_labels: tuple[int, int] = (0, 180)
+    recognizer_blobs: tuple[str, str] | None = None
+    detector_required_precision: Precision | None = None
+    recognizer_required_precision: Precision | None = None
+
+    @property
+    def detector_blobs(self) -> tuple[str, str]:
+        """Blob names owned by the selected detector."""
+        return self.blobs
+
+    @property
+    def resolved_recognizer_blobs(self) -> tuple[str, str]:
+        """Blob names owned by the selected recognizer."""
+        return self.recognizer_blobs or self.blobs
 
     @property
     def ctc_offset(self) -> int:
@@ -240,7 +255,13 @@ class OcrEngine:
         self._validated(rgb)
         if self._det is None:
             raise OcrEngineError("net-unloaded", "this engine was built without the detection net")
-        return detect_regions(self._runtime, self._det, rgb, self._target_size, self._models.blobs)
+        return detect_regions(
+            self._runtime,
+            self._det,
+            rgb,
+            self._target_size,
+            self._models.detector_blobs,
+        )
 
     def crops(self, rgb: np.ndarray) -> list[tuple]:
         """Every detected region with its rectified 48-high patch, empties dropped."""
@@ -280,7 +301,12 @@ class OcrEngine:
             raise OcrEngineError(
                 "net-unloaded", "this engine was built without the recognition net"
             )
-        return patch_logits(self._runtime, self._rec, patch, self._models.blobs)
+        return patch_logits(
+            self._runtime,
+            self._rec,
+            patch,
+            self._models.resolved_recognizer_blobs,
+        )
 
     def decode(self, logits: np.ndarray) -> tuple[str, float]:
         """Greedy-decode a logits slice with this engine's dictionary and offset."""

@@ -14,7 +14,6 @@
 | VOCR-0081 | open | low | xs | Reject negative `--repeat` values in the CLI instead of silently treating them as zero extra passes. |
 | VOCR-0082 | open | low | xs | Restore documentation consistency: link active gaps to `TODO.md` instead of the historical `docs/findings.md`, and remove or update stale claims of 74 tests now that the suite collects 76. |
 | VOCR-0093 | open | medium | s | Add configurable font discovery with script-coverage checks and record each corpus font's source, version, and redistribution licence. |
-| VOCR-0100 | open | medium | s | Migrate `CATALOG`, `PORT_FACTS`, constructors, exports, and catalog tests to composed model profiles without changing existing names or defaults. |
 | VOCR-0104 | open | medium | s | Replace `ParallelOcr` tests that allocate with `__new__` and overwrite private concrete fields with protocol-backed fakes using normal construction. |
 | VOCR-0105 | open | medium | s | Validate detection inference output rank and probability-map dimensions before contour processing, with stable errors for incompatible model ports. |
 | VOCR-0106 | open | medium | s | Validate recognition inference output rank and timestep/class dimensions before CTC decoding, with stable errors for incompatible model ports. |

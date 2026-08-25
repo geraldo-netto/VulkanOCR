@@ -5,12 +5,21 @@ from pathlib import Path
 
 import pytest
 
-from vulkanocr import CATALOG, DEFAULT_MODEL, OcrEngineError, OcrModels, models_for
+from vulkanocr import (
+    CATALOG,
+    DEFAULT_MODEL,
+    DETECTORS,
+    RECOGNIZERS,
+    DetectorSpec,
+    ModelProfile,
+    OcrEngineError,
+    OcrModels,
+    RecognizerSpec,
+    models_for,
+)
 
 
 def test_detector_and_recognizer_specs_own_independent_runtime_facts():
-    from vulkanocr.catalog import DetectorSpec, RecognizerSpec
-
     detector = DetectorSpec("det.param", ("det-in", "det-out"))
     recognizer = RecognizerSpec(
         "rec.param",
@@ -28,13 +37,12 @@ def test_detector_and_recognizer_specs_own_independent_runtime_facts():
     assert recognizer.blobs == ("rec-in", "rec-out")
     assert recognizer.ctc_offset == 1
     assert recognizer.required_precision == "int8"
+    attribute = "param"
     with pytest.raises(FrozenInstanceError):
-        detector.param = "changed.param"
+        setattr(detector, attribute, "changed.param")
 
 
 def test_named_components_preserve_each_upstream_port_convention():
-    from vulkanocr.catalog import DETECTORS, RECOGNIZERS
-
     assert DETECTORS["v6-medium-det"].blobs == ("input", "output")
     assert RECOGNIZERS["v6-medium-rec"].dictionary_includes_blank is True
     assert DETECTORS["v5-mobile-det"].blobs == ("in0", "out0")
@@ -42,9 +50,7 @@ def test_named_components_preserve_each_upstream_port_convention():
 
 
 def test_named_profiles_compose_components_without_copying_them():
-    from vulkanocr.catalog import DETECTORS, PROFILES, RECOGNIZERS
-
-    profile = PROFILES["v6-medium"]
+    profile = CATALOG["v6-medium"]
 
     assert profile.detector is DETECTORS["v6-medium-det"]
     assert profile.recognizer is RECOGNIZERS["v6-medium-rec"]
@@ -52,8 +58,6 @@ def test_named_profiles_compose_components_without_copying_them():
 
 
 def test_a_quantized_recognizer_can_reuse_an_existing_detector():
-    from vulkanocr.catalog import DETECTORS, ModelProfile, RecognizerSpec
-
     detector = DETECTORS["v6-tiny-det"]
     quantized = RecognizerSpec(
         "arabic-int8.param",
@@ -72,6 +76,7 @@ def test_a_quantized_recognizer_can_reuse_an_existing_detector():
 def test_the_default_is_the_current_generation():
     assert DEFAULT_MODEL == "v6-medium"
     assert models_for().blobs == ("input", "output")
+    assert models_for().resolved_recognizer_blobs == ("input", "output")
     assert models_for().dictionary_includes_blank is True
     assert models_for().orientation_param == (
         models_for().det_param.parent / "PP_LCNet_x0_25_textline_ori.param"
@@ -80,9 +85,14 @@ def test_the_default_is_the_current_generation():
     assert models_for().orientation_labels == (0, 180)
 
 
+def test_composition_preserves_public_profile_names():
+    assert tuple(CATALOG) == ("v6-medium", "v6-small", "v6-tiny", "v5-mobile")
+
+
 def test_the_previous_generation_keeps_its_own_conventions():
     v5 = models_for("v5-mobile")
     assert v5.blobs == ("in0", "out0")
+    assert v5.resolved_recognizer_blobs == ("in0", "out0")
     assert v5.dictionary_includes_blank is False
     assert v5.orientation_param is None
 
@@ -168,6 +178,7 @@ def test_a_named_port_supplies_its_own_facts(tmp_path):
         "avafly-v6", tmp_path / "det.param", tmp_path / "rec.param", tmp_path / "keys.txt"
     )
     assert models.blobs == ("input", "output")
+    assert models.resolved_recognizer_blobs == ("input", "output")
     assert models.dictionary_includes_blank is True
     assert models.ctc_offset == 0
     nihui = models_for_port("nihui-v5", tmp_path / "d", tmp_path / "r", tmp_path / "k")
@@ -181,8 +192,34 @@ def test_the_catalog_and_the_port_facts_agree():
     """The clone-layout catalog and the port registry state the same facts."""
     from vulkanocr.catalog import PORT_FACTS
 
-    for name, spec in CATALOG.items():
+    for name, profile in CATALOG.items():
         port = "nihui-v5" if name.startswith("v5") else "avafly-v6"
-        blobs, includes_blank = PORT_FACTS[port]
-        assert spec.blobs == blobs, name
-        assert spec.dictionary_includes_blank is includes_blank, name
+        detector, recognizer = PORT_FACTS[port]
+        assert profile.detector.blobs == detector.blobs, name
+        assert profile.recognizer.blobs == recognizer.blobs, name
+        assert (
+            profile.recognizer.dictionary_includes_blank
+            is recognizer.dictionary_includes_blank
+        ), name
+
+
+def test_profile_resolution_preserves_independent_component_facts(monkeypatch, tmp_path):
+    detector = DetectorSpec("det/model.param", ("det-in", "det-out"))
+    recognizer = RecognizerSpec(
+        "rec/model.param",
+        "rec/keys.txt",
+        ("rec-in", "rec-out"),
+        dictionary_includes_blank=True,
+        required_precision="int8",
+    )
+    monkeypatch.setitem(CATALOG, "mixed", ModelProfile(detector, recognizer, "mixed profile"))
+
+    models = models_for("mixed", tmp_path)
+
+    assert models.det_param == tmp_path / "det/model.param"
+    assert models.rec_param == tmp_path / "rec/model.param"
+    assert models.dictionary == tmp_path / "rec/keys.txt"
+    assert models.detector_blobs == ("det-in", "det-out")
+    assert models.resolved_recognizer_blobs == ("rec-in", "rec-out")
+    assert models.detector_required_precision is None
+    assert models.recognizer_required_precision == "int8"

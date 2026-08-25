@@ -15,7 +15,17 @@ The engine also offers its halves — detect / crops / recognise / logits /
 decode — for callers that time or compose them separately.
 """
 
-from .catalog import CATALOG, DEFAULT_MODEL, models_for, models_for_port
+from .catalog import (
+    CATALOG,
+    DEFAULT_MODEL,
+    DETECTORS,
+    RECOGNIZERS,
+    DetectorSpec,
+    ModelProfile,
+    RecognizerSpec,
+    models_for,
+    models_for_port,
+)
 from .device import HardwareVulkanUnavailableError, select_hardware_device
 from .engine import OcrEngine, OcrEngineError, OcrLine, OcrModels, OcrResult
 from .options import PRECISIONS, InferenceOptions, Precision, options_for_precision
@@ -23,8 +33,11 @@ from .options import PRECISIONS, InferenceOptions, Precision, options_for_precis
 __all__ = [
     "CATALOG",
     "DEFAULT_MODEL",
+    "DETECTORS",
+    "DetectorSpec",
     "HardwareVulkanUnavailableError",
     "InferenceOptions",
+    "ModelProfile",
     "OcrEngine",
     "OcrEngineError",
     "OcrLine",
@@ -32,6 +45,8 @@ __all__ = [
     "OcrResult",
     "PRECISIONS",
     "Precision",
+    "RECOGNIZERS",
+    "RecognizerSpec",
     "models_for",
     "models_for_port",
     "options_for_precision",
