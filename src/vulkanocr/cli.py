@@ -127,6 +127,8 @@ def _report(result, first_ms: float, timings: list[float], samples) -> None:
         # on printed identically — the exact invisibility the field's own
         # docstring warns about (VOCR-0045).
         print(f"{result.undecoded_regions} detected regions could not be decoded")
+    if result.filtered_regions:
+        print(f"{result.filtered_regions} recognised regions were filtered as known noise")
 
     print("\nGPU busy while reading (sysfs gpu_busy_percent):")
     for path, values in samples.items():

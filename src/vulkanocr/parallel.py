@@ -11,6 +11,7 @@ import numpy as np
 from .device import hardware_devices
 from .engine import OcrEngine, OcrEngineError, OcrModels, OcrResult, assemble_result
 from .options import InferenceOptions
+from .policy import FalsePositivePolicy, RecognitionContext
 from .scheduling import CropScheduler
 from .workers import MultiprocessingWorkerFleet, WorkerFleet
 
@@ -116,6 +117,8 @@ class ParallelOcr:
         fleet_factory: Callable[..., WorkerFleet] | None = None,
         worker_ready_timeout_s: float = 30.0,
         worker_response_timeout_s: float = 120.0,
+        false_positive_policy: FalsePositivePolicy | None = None,
+        recognition_context: RecognitionContext | None = None,
     ):
         components = _wire_components(
             models,
@@ -135,6 +138,16 @@ class ParallelOcr:
         self._fallback: PrimaryEngine | None = None
         self._generation = 0
         self._closed = False
+        self._false_positive_policy = false_positive_policy
+        self._recognition_context = recognition_context
+
+    def _assemble(self, device_name: str, recognised) -> OcrResult:
+        return assemble_result(
+            device_name,
+            recognised,
+            false_positive_policy=self._false_positive_policy,
+            recognition_context=self._recognition_context,
+        )
 
     @property
     def device_names(self) -> tuple[str, ...]:
@@ -152,19 +165,19 @@ class ParallelOcr:
         generation = self._generation
         pairs = self._primary.crops(rgb)
         if self._fleet is None:
-            return assemble_result(
+            return self._assemble(
                 self._primary.device_name,
                 ((region, self._primary.recognise(patch)) for region, patch in pairs),
             )
         if not pairs:
-            return assemble_result(self.device_name, ())
+            return self._assemble(self.device_name, ())
         if self._fleet.count == 0:
             recognizer = self._fallback_recognizer()
-            return assemble_result(
+            return self._assemble(
                 recognizer.device_name,
                 ((region, recognizer.recognise(patch)) for region, patch in pairs),
             )
-        return assemble_result(self.device_name, self._dispatch(generation, pairs))
+        return self._assemble(self.device_name, self._dispatch(generation, pairs))
 
     def _fallback_recognizer(self) -> PrimaryEngine:
         if self._fallback is None:

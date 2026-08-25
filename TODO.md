@@ -10,7 +10,6 @@
 | VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |
 | VOCR-0117 | open | medium | s | Add per-process DRM fdinfo proof where supported and retain AMD `gpu_busy_percent` as an explicitly system-wide fallback. |
 | VOCR-0118 | open | medium | s | Add fake AMD, Intel, NVIDIA, missing-counter, and wrong-device proof tests plus CLI documentation for each telemetry state. |
-| VOCR-0123 | open | medium | s | Apply the false-positive policy during result assembly and prove it rejects labeled icons while retaining legitimate CJK corpus lines. |
 | VOCR-0124 | open | medium | s | Add a whitespace-reconstruction stage over recognised regions using the approved gap heuristic without changing CTC decoding. |
 | VOCR-0125 | open | medium | s | Add proportional-font, monospace, punctuation, multiple-space, rotated-line, and right-to-left whitespace reconstruction regressions. |
 

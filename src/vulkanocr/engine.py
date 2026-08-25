@@ -18,6 +18,7 @@ from .device import select_hardware_device
 from .inference import NcnnInferenceError
 from .options import InferenceOptions, Precision
 from .orientation import classify_patch_orientation, rotate_patch
+from .policy import FalsePositivePolicy, RecognitionContext
 from .recognition import (
     CtcDictionaryMismatchError,
     RecognitionOutputError,
@@ -161,11 +162,13 @@ class OcrResult:
     silently vanishing, so a caller can tell "clean page" from "the detector
     saw something the recogniser could not read" — which is exactly how the
     30°–60° rotation bug stayed invisible for as long as it did.
+    ``filtered_regions`` separately counts opt-in policy rejections.
     """
 
     device_name: str
     lines: tuple[OcrLine, ...]
     undecoded_regions: int = 0
+    filtered_regions: int = 0
 
 
 class OcrEngine:
@@ -182,6 +185,8 @@ class OcrEngine:
         options: InferenceOptions | None = None,
         device: Any = None,
         nets: tuple[str, ...] | None = None,
+        false_positive_policy: FalsePositivePolicy | None = None,
+        recognition_context: RecognitionContext | None = None,
     ):
         """`runtime` is the ncnn module, or anything shaped like it.
 
@@ -205,6 +210,8 @@ class OcrEngine:
         # engine per card — otherwise the most capable one is selected.
         self._device = device if device is not None else select_hardware_device(runtime)
         self._characters = self._load_dictionary(models.dictionary)
+        self._false_positive_policy = false_positive_policy
+        self._recognition_context = recognition_context
         # A caller may ask for half an engine (VOCR-0042): a pool worker only
         # ever recognises, and its unused detection net still held hundreds
         # of MiB of Vulkan allocations on every device.
@@ -392,6 +399,8 @@ class OcrEngine:
         return assemble_result(
             self._device.name,
             ((region, self.recognise(patch)) for region, patch in self.crops(rgb)),
+            false_positive_policy=self._false_positive_policy,
+            recognition_context=self._recognition_context,
         )
 
     def _load_net(self, param: Path):
@@ -452,7 +461,13 @@ class OcrEngine:
         return tuple(characters)
 
 
-def assemble_result(device_name: str, recognised) -> OcrResult:
+def assemble_result(
+    device_name: str,
+    recognised,
+    *,
+    false_positive_policy: FalsePositivePolicy | None = None,
+    recognition_context: RecognitionContext | None = None,
+) -> OcrResult:
     """One `OcrResult` from `(region, (text, confidence))` pairs.
 
     The single assembly both engines share: `OcrEngine.read` feeds it
@@ -463,9 +478,15 @@ def assemble_result(device_name: str, recognised) -> OcrResult:
     """
     lines = []
     undecoded = 0
+    filtered = 0
     for region, (text, confidence) in recognised:
         if not text:
             undecoded += 1
+            continue
+        if false_positive_policy is not None and not false_positive_policy.decide(
+            text, confidence, recognition_context
+        ).accepted:
+            filtered += 1
             continue
         lines.append(
             OcrLine(
@@ -481,4 +502,9 @@ def assemble_result(device_name: str, recognised) -> OcrResult:
             )
         )
     lines.sort(key=lambda line: (line.center_y, line.center_x))
-    return OcrResult(device_name=device_name, lines=tuple(lines), undecoded_regions=undecoded)
+    return OcrResult(
+        device_name=device_name,
+        lines=tuple(lines),
+        undecoded_regions=undecoded,
+        filtered_regions=filtered,
+    )

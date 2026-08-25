@@ -132,5 +132,6 @@ rather than a guess.
 ## Known gaps
 
 Current work is tracked in [`TODO.md`](../TODO.md), not the historical spike
-report. It includes glyph-font icons decoded as CJK noise, occasional dropped
-spaces between words, and the Hebrew model/provenance decision.
+report. It includes occasional dropped spaces between words and the Hebrew
+model/provenance decision. Known glyph-icon readings have an opt-in,
+page-script-aware filter; see the README.

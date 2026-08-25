@@ -112,9 +112,25 @@ for a `minAreaRect` is one expression and needs no clipper. It closed the gap
 to upstream (CER 0.0223 → 0.0156) and made reading *faster*, because a taller
 box yields a narrower 48-px crop.
 
-Active gaps are tracked in [TODO.md](TODO.md), including glyph-font icons
-decoded as CJK noise, occasional dropped spaces, and the lack of an approved
-Hebrew model.
+Active gaps are tracked in [TODO.md](TODO.md), including occasional dropped
+spaces and the lack of an approved Hebrew model.
+
+Known icon readings can be filtered without banning CJK globally by supplying
+both an opt-in policy and page context:
+
+```python
+from vulkanocr import FalsePositivePolicy, OcrEngine, RecognitionContext
+
+engine = OcrEngine(
+    models,
+    false_positive_policy=FalsePositivePolicy(frozenset({"花", "回"})),
+    recognition_context=RecognitionContext(page_languages=frozenset({"en"})),
+)
+```
+
+Low-confidence `花`/`回` stays valid on a Chinese/Japanese page, without page
+context, or when only broad model capability is known. Filtered regions are
+reported separately from regions that failed to decode.
 
 ## Licence
 

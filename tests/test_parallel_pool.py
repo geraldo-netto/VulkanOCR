@@ -9,6 +9,7 @@ import pytest
 from vulkanocr.detection import TextRegion
 from vulkanocr.engine import OcrModels
 from vulkanocr.parallel import ParallelOcr, PrimaryEngine
+from vulkanocr.policy import FalsePositivePolicy, RecognitionContext
 from vulkanocr.workers import WorkerAnswer, WorkerFleet
 
 
@@ -69,7 +70,13 @@ class FakePrimary:
         self.close_calls += 1
 
 
-def _pool(fleet: WorkerFleet | None, pairs):
+def _pool(
+    fleet: WorkerFleet | None,
+    pairs,
+    *,
+    false_positive_policy: FalsePositivePolicy | None = None,
+    recognition_context: RecognitionContext | None = None,
+):
     primary = FakePrimary(pairs)
     engines: list[PrimaryEngine] = []
 
@@ -88,6 +95,8 @@ def _pool(fleet: WorkerFleet | None, pairs):
         device_provider=lambda _runtime: devices,
         engine_factory=build_engine,
         fleet_factory=None if fleet is None else lambda *_args: fleet,
+        false_positive_policy=false_positive_policy,
+        recognition_context=recognition_context,
     )
     return pool, primary, engines
 
@@ -171,6 +180,21 @@ def test_absent_fleet_reads_on_single_device_primary():
 
     assert result.device_name == "Fast GPU"
     assert [line.text for line in result.lines] == ["fallback"] * 3
+
+
+def test_policy_is_applied_after_parallel_recognition():
+    pool, primary, _engines = _pool(
+        None,
+        _pairs(),
+        false_positive_policy=FalsePositivePolicy(frozenset({"花"})),
+        recognition_context=RecognitionContext(page_languages=frozenset({"en"})),
+    )
+    primary.result = ("花", 0.4)
+
+    result = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+
+    assert result.lines == ()
+    assert result.filtered_regions == 3
 
 
 def test_empty_multi_gpu_fleet_builds_and_reuses_lazy_recognition_fallback():
