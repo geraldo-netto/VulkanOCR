@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 from vulkanocr.detection import TextRegion
-from vulkanocr.engine import OcrEngineError
 from vulkanocr.parallel import ParallelOcr
 from vulkanocr.workers import WorkerAnswer
 
@@ -51,6 +50,8 @@ class FakeFleet:
 def _pool(fleet, pairs):
     pool = ParallelOcr.__new__(ParallelOcr)
     pool._fleet = fleet
+    pool._fallback = None
+    pool._fallback_factory = None
     pool._generation = 0
     pool._closed = False
     pool._primary = SimpleNamespace(
@@ -142,13 +143,27 @@ def test_absent_fleet_reads_on_single_device_primary():
     assert [line.text for line in result.lines] == ["fallback"] * 3
 
 
-def test_empty_multi_gpu_fleet_is_stable_refusal_until_lazy_fallback_exists():
+def test_empty_multi_gpu_fleet_builds_and_reuses_lazy_recognition_fallback():
     pool = _pool(FakeFleet({}, [], {}), _pairs())
+    built = []
 
-    with pytest.raises(OcrEngineError) as caught:
-        pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+    class Fallback:
+        device_name = "Fast GPU"
 
-    assert caught.value.code == "worker-unavailable"
+        def recognise(self, _patch):
+            return ("recovered", 0.9)
+
+        def close(self):
+            return None
+
+    pool._fallback_factory = lambda: built.append(Fallback()) or built[-1]
+
+    first = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+    second = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+
+    assert [line.text for line in first.lines] == ["recovered"] * 3
+    assert [line.text for line in second.lines] == ["recovered"] * 3
+    assert len(built) == 1
 
 
 def test_close_is_safe_to_repeat():
@@ -241,3 +256,9 @@ def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
     assert built[0][1]["nets"] == ("det",)
     assert built[1][0] is models and built[1][1] == devices
     assert built[1][2] is pool._options
+    pool._fallback_recognizer()
+    assert built[2][0] is models
+    assert built[2][1]["runtime"] is runtime
+    assert built[2][1]["device"] is devices[0]
+    assert built[2][1]["options"] is pool._options
+    assert built[2][1]["nets"] == ("rec",)

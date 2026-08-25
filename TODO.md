@@ -36,7 +36,6 @@
 | VOCR-0105 | open | medium | s | Validate detection inference output rank and probability-map dimensions before contour processing, with stable errors for incompatible model ports. |
 | VOCR-0106 | open | medium | s | Validate recognition inference output rank and timestep/class dimensions before CTC decoding, with stable errors for incompatible model ports. |
 | VOCR-0107 | open | medium | s | Translate ncnn input/extract exceptions and return codes to stage-specific `OcrEngineError` values and make the CLI catch errors raised during reads. |
-| VOCR-0109 | open | high | s | Lazily load preferred-device recognition only after every worker is unavailable, preserving single-device fallback without idle multi-GPU allocations. |
 | VOCR-0110 | open | high | s | Add lifecycle and fake-net allocation tests proving multi-GPU startup holds one detector and one recognition net per worker, then releases lazy fallback resources. |
 | VOCR-0111 | open | high | s | Add an inference-response watchdog based on in-flight jobs so a live worker that stops replying becomes a stable timeout instead of an endless read. |
 | VOCR-0112 | open | high | s | Retire non-responsive workers, discard their outstanding generation safely, and add alive-but-silent worker regressions for startup and inference. |

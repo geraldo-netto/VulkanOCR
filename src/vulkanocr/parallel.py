@@ -31,6 +31,7 @@ class _ParallelComponents:
     options: InferenceOptions
     primary: PrimaryEngine
     fleet: WorkerFleet | None
+    fallback_factory: Callable[[], PrimaryEngine] | None
 
 
 def _wire_components(
@@ -64,13 +65,23 @@ def _wire_components(
         nets=primary_nets,
     )
     if len(devices) == 1:
-        return _ParallelComponents(resolved, primary, None)
+        return _ParallelComponents(resolved, primary, None, None)
     try:
         fleet = build_fleet(models, devices, resolved)
     except BaseException:
         primary.close()
         raise
-    return _ParallelComponents(resolved, primary, fleet)
+
+    def build_fallback() -> PrimaryEngine:
+        return build_engine(
+            models,
+            runtime=runtime,
+            options=resolved,
+            device=devices[0],
+            nets=("rec",),
+        )
+
+    return _ParallelComponents(resolved, primary, fleet, build_fallback)
 
 
 class ParallelOcr:
@@ -99,6 +110,8 @@ class ParallelOcr:
         self._options = components.options
         self._primary = components.primary
         self._fleet = components.fleet
+        self._fallback_factory = components.fallback_factory
+        self._fallback: PrimaryEngine | None = None
         self._generation = 0
         self._closed = False
 
@@ -125,8 +138,21 @@ class ParallelOcr:
         if not pairs:
             return assemble_result(self.device_name, ())
         if self._fleet.count == 0:
-            raise OcrEngineError("worker-unavailable", "every recognition worker is unavailable")
+            recognizer = self._fallback_recognizer()
+            return assemble_result(
+                recognizer.device_name,
+                ((region, recognizer.recognise(patch)) for region, patch in pairs),
+            )
         return assemble_result(self.device_name, self._dispatch(generation, pairs))
+
+    def _fallback_recognizer(self) -> PrimaryEngine:
+        if self._fallback is None:
+            if self._fallback_factory is None:
+                raise OcrEngineError(
+                    "worker-unavailable", "no preferred-device recognition fallback is available"
+                )
+            self._fallback = self._fallback_factory()
+        return self._fallback
 
     def _dispatch(self, generation: int, pairs: list[tuple]) -> list:
         fleet = self._fleet
@@ -167,6 +193,8 @@ class ParallelOcr:
         self._closed = True
         if self._fleet is not None:
             self._fleet.close()
+        if self._fallback is not None:
+            self._fallback.close()
         self._primary.close()
 
     def __enter__(self) -> ParallelOcr:
