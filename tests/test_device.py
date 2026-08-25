@@ -328,6 +328,42 @@ class TestEngineInputValidation:
         assert caught.value.code == "recognition-output-invalid"
         assert caught.value.detail == "recognition output has rank 1"
 
+    @pytest.mark.parametrize("stage", ["detection", "recognition", "orientation"])
+    def test_native_inference_failures_have_stage_specific_codes(self, stage):
+        from vulkanocr.engine import OcrEngine, OcrEngineError
+        from vulkanocr.inference import NcnnInferenceError
+
+        native = NcnnInferenceError(stage, "extract", "ncnn returned -1")
+        stable = OcrEngine._stable_inference_error(native)
+
+        assert isinstance(stable, OcrEngineError)
+        assert stable.code == f"{stage}-inference-failed"
+        assert stable.detail == "extract failed: ncnn returned -1"
+
+    @pytest.mark.parametrize(
+        ("function", "method", "stage", "shape"),
+        [
+            ("detect_regions", "detect", "detection", (8, 8, 3)),
+            ("patch_logits", "logits", "recognition", (48, 8, 3)),
+        ],
+    )
+    def test_engine_boundaries_translate_native_failures(
+        self, tmp_path, monkeypatch, function, method, stage, shape
+    ):
+        from vulkanocr.engine import OcrEngineError
+        from vulkanocr.inference import NcnnInferenceError
+
+        def native_failure(*_args):
+            raise NcnnInferenceError(stage, "input", "ncnn returned -2")
+
+        monkeypatch.setattr(f"vulkanocr.engine.{function}", native_failure)
+        value = np.zeros(shape, dtype=np.uint8)
+        with self.engine(tmp_path) as engine, pytest.raises(OcrEngineError) as caught:
+            getattr(engine, method)(value)
+
+        assert caught.value.code == f"{stage}-inference-failed"
+        assert caught.value.detail == "input failed: ncnn returned -2"
+
 
 class TestInferenceOptionsAreApplied:
     _PRECISION_FIELDS = (

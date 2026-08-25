@@ -72,19 +72,18 @@ def main() -> int:
         raise SystemExit(f"cannot read image: {arguments.image}")
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
-    # A person at a terminal gets the refusal, not the machinery around it:
-    # a missing model, a missing ncnn wheel and a machine with no hardware
-    # Vulkan device are all states with a next step, and a traceback buries
-    # the sentence that names it.
+    # A person at a terminal gets the refusal, not the machinery around it.
+    # Reads share the construction boundary so a native failure is concise
+    # and the engine's context manager still releases every loaded network.
     try:
         engine = _reader(arguments)
+        print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")
+        print(f"precision: {arguments.precision}")
+        print(f"device: {engine.device_name}")
+        with engine, busy_sampler() as samples:
+            result, first_ms, timings = _timed_reads(engine, rgb, arguments.repeat)
     except (OcrEngineError, HardwareVulkanUnavailableError) as error:
         raise SystemExit(str(error)) from error
-    print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")
-    print(f"precision: {arguments.precision}")
-    print(f"device: {engine.device_name}")
-    with engine, busy_sampler() as samples:
-        result, first_ms, timings = _timed_reads(engine, rgb, arguments.repeat)
     _report(result, first_ms, timings, samples)
     return 0
 

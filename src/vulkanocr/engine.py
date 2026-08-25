@@ -15,6 +15,7 @@ import numpy as np
 
 from .detection import DetectionOutputError, detect_regions
 from .device import select_hardware_device
+from .inference import NcnnInferenceError
 from .options import InferenceOptions, Precision
 from .orientation import classify_patch_orientation, rotate_patch
 from .recognition import (
@@ -271,6 +272,8 @@ class OcrEngine:
             )
         except DetectionOutputError as error:
             raise OcrEngineError("detection-output-invalid", str(error)) from error
+        except NcnnInferenceError as error:
+            raise self._stable_inference_error(error) from error
 
     def crops(self, rgb: np.ndarray) -> list[tuple]:
         """Every detected region with its rectified 48-high patch, empties dropped."""
@@ -290,13 +293,16 @@ class OcrEngine:
             raise OcrEngineError(
                 "net-unloaded", "this engine was built without the orientation net"
             )
-        degrees, _confidence = classify_patch_orientation(
-            self._runtime,
-            self._ori,
-            patch,
-            self._models.orientation_blobs,
-            self._models.orientation_labels,
-        )
+        try:
+            degrees, _confidence = classify_patch_orientation(
+                self._runtime,
+                self._ori,
+                patch,
+                self._models.orientation_blobs,
+                self._models.orientation_labels,
+            )
+        except NcnnInferenceError as error:
+            raise self._stable_inference_error(error) from error
         return rotate_patch(patch, degrees)
 
     def recognise(self, patch: np.ndarray) -> tuple[str, float]:
@@ -319,6 +325,8 @@ class OcrEngine:
             )
         except RecognitionOutputError as error:
             raise OcrEngineError("recognition-output-invalid", str(error)) from error
+        except NcnnInferenceError as error:
+            raise self._stable_inference_error(error) from error
 
     def decode(self, logits: np.ndarray) -> tuple[str, float]:
         """Greedy-decode a logits slice with this engine's dictionary and offset."""
@@ -326,6 +334,11 @@ class OcrEngine:
             return decode_ctc(logits, self._characters, self._models.ctc_offset)
         except CtcDictionaryMismatchError as error:
             raise OcrEngineError("dictionary-mismatch", str(error)) from error
+
+    @staticmethod
+    def _stable_inference_error(error: NcnnInferenceError) -> OcrEngineError:
+        """Translate native details without exposing an internal exception type."""
+        return OcrEngineError(f"{error.stage}-inference-failed", str(error))
 
     @staticmethod
     def _resolved_nets(models: OcrModels, nets: tuple[str, ...] | None) -> tuple[str, ...]:
