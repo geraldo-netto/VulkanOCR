@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import time
-from collections import deque
 from queue import Empty
 from typing import Any
 
@@ -37,6 +36,7 @@ import numpy as np
 from .device import hardware_devices
 from .engine import OcrEngine, OcrEngineError, OcrModels, OcrResult, assemble_result
 from .options import InferenceOptions
+from .scheduling import CropScheduler
 
 # One probe strip per worker, recognised twice at start-up: the second pass is
 # the seed price (ms per pixel column) the dispatcher plans with before it has
@@ -252,34 +252,17 @@ class ParallelOcr:
 
     def _dispatch(self, generation: int, pairs: list[tuple]) -> list:
         """Price and farm the crops out, and collect this read's replies."""
-        work = deque(sorted(enumerate(pairs), key=lambda item: -item[1][1].shape[1]))
         results: list = [None] * len(pairs)
-        committed = dict.fromkeys(self._cost, 0.0)
-        busy: set[int] = set()
+        scheduler = CropScheduler(self._cost, [pair[1].shape[1] for pair in pairs])
         outstanding = 0
 
         def assign() -> None:
             nonlocal outstanding
-            fastest = min(self._cost.values())
-            for index in sorted(self._cost, key=lambda i: self._cost[i]):
-                if index in busy or not work:
-                    continue
-                price = self._cost[index]
-                if price <= fastest * 1.5:
-                    crop_index, (_region, patch) = work[0]
-                    side = work.popleft
-                else:
-                    crop_index, (_region, patch) = work[-1]
-                    remaining = sum(pair[1].shape[1] for _i, pair in work)
-                    # A slow device is given a cheap crop only while its total
-                    # commitment stays under the fast side's projected work.
-                    if committed[index] + price * patch.shape[1] > fastest * remaining:
-                        continue
-                    side = work.pop
-                side()
-                committed[index] += price * patch.shape[1]
-                self._requests[index].put((generation, crop_index, patch))
-                busy.add(index)
+            for assignment in scheduler.assignments():
+                patch = pairs[assignment.crop_index][1]
+                self._requests[assignment.device_index].put(
+                    (generation, assignment.crop_index, patch)
+                )
                 outstanding += 1
 
         assign()
@@ -290,27 +273,13 @@ class ParallelOcr:
                 # A leftover from a read that raised; its page is gone.
                 continue
             outstanding -= 1
-            busy.discard(index)
             region, patch = pairs[crop_index]
-            self._reprice(index, elapsed, patch.shape[1])
+            scheduler.complete(index, crop_index, elapsed)
+            self._cost[index] = scheduler.costs[index]
             results[crop_index] = (region, answer)
             assign()
 
         return results
-
-    def _reprice(self, index: int, elapsed_ms: float, columns: int) -> None:
-        """Refine a device's ms-per-column from the crop it just finished.
-
-        The probe seed was written once and never touched (VOCR-0039), so a
-        device whose 96-column white strip was unrepresentative — fp16,
-        clocks still ramping, an asymmetric detection load — mis-priced
-        every assignment for the pool's whole life. An equal-weight blend:
-        old enough to smooth one noisy crop, new enough that a wrong seed
-        is halved by every real one.
-        """
-        if columns < 1 or index not in self._cost:
-            return
-        self._cost[index] = (self._cost[index] + elapsed_ms / columns) / 2
 
     def close(self) -> None:
         """Release the workers, the queues, and the primary engine.

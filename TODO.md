@@ -6,7 +6,6 @@
 | --- | --- | --- | --- | --- |
 | VOCR-0062 | open | high | s | Define a versioned corpus-case schema carrying script, language, exact lines, font and licence, palette, size, background objects, variant, and image path; validate every generated manifest against it. |
 | VOCR-0064 | open | medium | s | Add independent immutable detector and recognizer specifications with their own paths, blob names, dictionary convention, and precision requirements. |
-| VOCR-0065 | open | high | s | Extract crop assignment and device repricing from `ParallelOcr._dispatch` into a pure scheduling policy with no queues, processes, ncnn objects, or OCR assembly. |
 | VOCR-0066 | open | medium | s | Extract detector and recognizer extractor creation, input submission, output extraction, and cleanup into one checked ncnn inference helper. |
 | VOCR-0070 | open | high | s | Build the parent engine with only the detection net when a multi-GPU worker fleet is available, eliminating the preferred GPU's idle duplicate recognition net. |
 | VOCR-0071 | open | high | s | Add a configurable worker-readiness deadline that closes the partial fleet and reports a stable startup error when a live child never sends `ready`. |
