@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
+from corpus_schema import load_cases
 from corpusrun import run_corpus
 from scoring import load_rgb
 
@@ -27,7 +27,7 @@ def main() -> int:
     corpus = arguments.corpus
     model_set = arguments.model_set
     precision = arguments.precision
-    cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
+    cases = load_cases(corpus / "ground-truth.json")
 
     with OcrEngine(models_for(model_set), options=options_for_precision(precision)) as engine:
 

@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-import json
 import pathlib
 import subprocess
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from corpus_schema import load_cases
 from corpusrun import run_corpus
 
 
 def main() -> int:
     corpus = pathlib.Path(sys.argv[1])
     psm = sys.argv[2] if len(sys.argv) > 2 else "6"
-    cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
+    cases = load_cases(corpus / "ground-truth.json")
 
     def read(path) -> list[str]:
         done = subprocess.run(

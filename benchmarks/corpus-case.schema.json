@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulkanocr.dev/schema/corpus-case-v1.json",
+  "title": "VulkanOCR corpus manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "cases"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "cases": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "$defs": {
+    "colour": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$"
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "script",
+        "language",
+        "direction",
+        "lines",
+        "font",
+        "palette",
+        "size",
+        "background_objects",
+        "variant",
+        "image"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "script": {"type": "string", "pattern": "^[A-Z][a-z]{3}$"},
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+        },
+        "direction": {"enum": ["ltr", "rtl"]},
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "font": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["family", "file", "license"],
+          "properties": {
+            "family": {"type": "string", "minLength": 1},
+            "file": {"type": "string", "minLength": 1},
+            "license": {"type": "string", "minLength": 1}
+          }
+        },
+        "palette": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["foreground", "background"],
+          "properties": {
+            "foreground": {"$ref": "#/$defs/colour"},
+            "background": {"$ref": "#/$defs/colour"}
+          }
+        },
+        "size": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["font_px", "width_px", "height_px"],
+          "properties": {
+            "font_px": {"type": "integer", "minimum": 1},
+            "width_px": {"type": "integer", "minimum": 1},
+            "height_px": {"type": "integer", "minimum": 1}
+          }
+        },
+        "background_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "bounds", "fill"],
+            "properties": {
+              "kind": {"enum": ["rectangle", "circle", "line", "polygon"]},
+              "bounds": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {"type": "integer", "minimum": 0}
+              },
+              "fill": {"$ref": "#/$defs/colour"}
+            }
+          }
+        },
+        "variant": {"type": "string", "minLength": 1},
+        "image": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.(?:png|jpe?g)$"
+        }
+      }
+    }
+  }
+}

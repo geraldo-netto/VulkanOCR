@@ -16,7 +16,6 @@ a configuration that never ran.
 
 from __future__ import annotations
 
-import json
 import os
 import pathlib
 import sys
@@ -25,6 +24,7 @@ import warnings
 warnings.filterwarnings("ignore")
 os.environ.setdefault("FLAGS_call_stack_level", "0")
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from corpus_schema import load_cases
 from corpusrun import run_corpus
 from paddleocr import PaddleOCR
 
@@ -32,7 +32,7 @@ from paddleocr import PaddleOCR
 def main() -> int:
     corpus = pathlib.Path(sys.argv[1])
     mkldnn = "--no-mkldnn" not in sys.argv[2:]
-    cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
+    cases = load_cases(corpus / "ground-truth.json")
     ocr = PaddleOCR(
         lang="en",
         use_doc_orientation_classify=False,

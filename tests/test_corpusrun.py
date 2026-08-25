@@ -66,7 +66,15 @@ def test_an_empty_results_document_is_refused_by_engine_name(tmp_path):
         json.dumps({"engine": "went/nowhere", "device": "CPU", "rows": []}), encoding="utf-8"
     )
     manifest = tmp_path / "ground-truth.json"
-    manifest.write_text(json.dumps([{"id": "expected", "variant": "clean"}]), encoding="utf-8")
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "cases": [{"id": "expected", "variant": "clean"}],
+            }
+        ),
+        encoding="utf-8",
+    )
     script = pathlib.Path(__file__).resolve().parents[1] / "benchmarks" / "compare_engines.py"
     done = subprocess.run(
         [sys.executable, str(script), str(tmp_path), str(manifest)],

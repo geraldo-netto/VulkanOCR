@@ -9,50 +9,74 @@ size, font, contrast, blur, noise, JPEG, skew, and dense UI text.
 
 from __future__ import annotations
 
-import json
 import pathlib
 import sys
 
 import cv2
 import numpy as np
+from corpus_schema import SCHEMA_VERSION, write_manifest
 from PIL import Image, ImageDraw, ImageFont
-
-OUT = pathlib.Path(sys.argv[1])
 
 FONTS = {
     "sans": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "serif": "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
     "mono": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
 }
+FONT_FACTS = {
+    "sans": ("DejaVu Sans", "DejaVuSans.ttf"),
+    "serif": ("DejaVu Serif", "DejaVuSerif.ttf"),
+    "mono": ("DejaVu Sans Mono", "DejaVuSansMono.ttf"),
+}
+FONT_LICENSE = "Bitstream Vera Fonts Copyright"
 
-PARAGRAPHS = [
-    [
-        "The quick brown fox jumps over the lazy dog.",
-        "Pack my box with five dozen liquor jugs.",
-        "How vexingly quick daft zebras jump!",
-    ],
-    [
-        "Invoice 2026-08-441",
-        "Subtotal: 1,284.50 EUR",
-        "VAT (23%): 295.44 EUR",
-        "Total due: 1,579.94 EUR",
-    ],
-    [
-        "O gato subiu no telhado e ficou",
-        "olhando a lua durante a noite fria.",
-        "Ação, coração, informação.",
-    ],
-    [
-        "def read(self, rgb: np.ndarray) -> OcrResult:",
-        "    regions = detect_regions(self._det, rgb)",
-        "    return OcrResult(self.device_name, lines)",
-    ],
-    [
-        "Hardware health 98%",
-        "Queue depth: 0 jobs",
-        "Radeon RX 6600 XT - gpu 41 C",
-        "Media transcription idle",
-    ],
+DOCUMENTS = [
+    {
+        "script": "Latn",
+        "language": "en",
+        "lines": [
+            "The quick brown fox jumps over the lazy dog.",
+            "Pack my box with five dozen liquor jugs.",
+            "How vexingly quick daft zebras jump!",
+        ],
+    },
+    {
+        "script": "Latn",
+        "language": "en",
+        "lines": [
+            "Invoice 2026-08-441",
+            "Subtotal: 1,284.50 EUR",
+            "VAT (23%): 295.44 EUR",
+            "Total due: 1,579.94 EUR",
+        ],
+    },
+    {
+        "script": "Latn",
+        "language": "pt",
+        "lines": [
+            "O gato subiu no telhado e ficou",
+            "olhando a lua durante a noite fria.",
+            "Ação, coração, informação.",
+        ],
+    },
+    {
+        "script": "Latn",
+        "language": "en",
+        "lines": [
+            "def read(self, rgb: np.ndarray) -> OcrResult:",
+            "    regions = detect_regions(self._det, rgb)",
+            "    return OcrResult(self.device_name, lines)",
+        ],
+    },
+    {
+        "script": "Latn",
+        "language": "en",
+        "lines": [
+            "Hardware health 98%",
+            "Queue depth: 0 jobs",
+            "Radeon RX 6600 XT - gpu 41 C",
+            "Media transcription idle",
+        ],
+    },
 ]
 
 
@@ -104,34 +128,58 @@ def faded(array, factor):
     return np.clip(255 - (255 - array.astype(np.float32)) * factor, 0, 255).astype(np.uint8)
 
 
-def main() -> int:
-    OUT.mkdir(parents=True, exist_ok=True)
+def main(output: pathlib.Path | None = None) -> int:
+    output = output or pathlib.Path(sys.argv[1])
+    output.mkdir(parents=True, exist_ok=True)
 
     cases = []
-    for index, lines in enumerate(PARAGRAPHS):
+    for index, document in enumerate(DOCUMENTS):
+        lines = document["lines"]
         base = render(lines, FONTS["sans"], 28)
         variants = {
-            "clean-28px-sans": base,
-            "clean-16px-sans": render(lines, FONTS["sans"], 16),
-            "clean-12px-sans": render(lines, FONTS["sans"], 12, width=700),
-            "clean-28px-serif": render(lines, FONTS["serif"], 28),
-            "clean-28px-mono": render(lines, FONTS["mono"], 28),
-            "skew-5deg": skew(base, 5),
-            "skew-12deg": skew(base, 12),
-            "blur-5px": blur(base, 5),
-            "noise-sigma25": noisy(base, 25),
-            "jpeg-q30": jpeg(base, 30),
-            "faded-40pc": faded(base, 0.4),
+            "clean-28px-sans": (base, "sans", 28),
+            "clean-16px-sans": (render(lines, FONTS["sans"], 16), "sans", 16),
+            "clean-12px-sans": (render(lines, FONTS["sans"], 12, width=700), "sans", 12),
+            "clean-28px-serif": (render(lines, FONTS["serif"], 28), "serif", 28),
+            "clean-28px-mono": (render(lines, FONTS["mono"], 28), "mono", 28),
+            "skew-5deg": (skew(base, 5), "sans", 28),
+            "skew-12deg": (skew(base, 12), "sans", 28),
+            "blur-5px": (blur(base, 5), "sans", 28),
+            "noise-sigma25": (noisy(base, 25), "sans", 28),
+            "jpeg-q30": (jpeg(base, 30), "sans", 28),
+            "faded-40pc": (faded(base, 0.4), "sans", 28),
         }
-        for name, array in variants.items():
+        for name, (array, font_key, font_px) in variants.items():
             stem = f"case{index:02d}-{name}"
-            cv2.imwrite(str(OUT / f"{stem}.png"), array[:, :, ::-1])
-            cases.append({"id": stem, "image": f"{stem}.png", "lines": lines, "variant": name})
+            image = f"{stem}.png"
+            cv2.imwrite(str(output / image), array[:, :, ::-1])
+            family, font_file = FONT_FACTS[font_key]
+            height, width = array.shape[:2]
+            cases.append(
+                {
+                    "id": stem,
+                    "script": document["script"],
+                    "language": document["language"],
+                    "direction": "ltr",
+                    "lines": lines,
+                    "font": {
+                        "family": family,
+                        "file": font_file,
+                        "license": FONT_LICENSE,
+                    },
+                    "palette": {"foreground": "#000000", "background": "#FFFFFF"},
+                    "size": {"font_px": font_px, "width_px": width, "height_px": height},
+                    "background_objects": [],
+                    "variant": name,
+                    "image": image,
+                }
+            )
 
-    (OUT / "ground-truth.json").write_text(
-        json.dumps(cases, indent=2, ensure_ascii=False), encoding="utf-8"
+    write_manifest(
+        output / "ground-truth.json",
+        {"schema_version": SCHEMA_VERSION, "cases": cases},
     )
-    print(f"{len(cases)} images, {len(PARAGRAPHS)} texts x 11 variants -> {OUT}")
+    print(f"{len(cases)} images, {len(DOCUMENTS)} texts x 11 variants -> {output}")
     return 0
 
 

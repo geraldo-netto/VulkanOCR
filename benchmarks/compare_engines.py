@@ -8,13 +8,15 @@ import pathlib
 import statistics
 import sys
 
+from corpus_schema import load_cases
+
 
 def _manifest_path(path: pathlib.Path) -> pathlib.Path:
     return path / "ground-truth.json" if path.is_dir() else path
 
 
 def _expected_cases(path: pathlib.Path) -> dict[str, str]:
-    cases = json.loads(_manifest_path(path).read_text(encoding="utf-8"))
+    cases = load_cases(_manifest_path(path))
     expected = {case["id"]: case["variant"] for case in cases}
     if len(expected) != len(cases):
         raise ValueError("the corpus manifest contains duplicate case ids")
