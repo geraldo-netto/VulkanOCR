@@ -16,6 +16,7 @@ import numpy as np
 from .detection import detect_regions
 from .device import select_hardware_device
 from .options import InferenceOptions
+from .orientation import classify_patch_orientation, rotate_patch
 from .recognition import CtcDictionaryMismatchError, crop_region, decode_ctc, patch_logits
 
 DEFAULT_TARGET_SIZE = 640
@@ -158,7 +159,7 @@ class OcrEngine:
         use_fp16: bool | None = None,
         options: InferenceOptions | None = None,
         device: Any = None,
-        nets: tuple[str, ...] = ("det", "rec"),
+        nets: tuple[str, ...] | None = None,
     ):
         """`runtime` is the ncnn module, or anything shaped like it.
 
@@ -174,7 +175,7 @@ class OcrEngine:
                 raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
         self._runtime: Any = runtime
         # The nets choice is checked before it decides what must exist.
-        nets = self._validated_nets(nets)
+        nets = self._resolved_nets(models, nets)
         self._models = models.validated(nets)
         self._target_size = self._validated_target_size(target_size)
         self._options = self._resolved_options(options, use_vulkan, use_fp16)
@@ -247,8 +248,26 @@ class OcrEngine:
         for region in self.detect(rgb):
             patch = crop_region(rgb, region)
             if patch.size:
+                if self._ori is not None:
+                    patch = self.orient(patch)
                 pairs.append((region, patch))
         return pairs
+
+    def orient(self, patch: np.ndarray) -> np.ndarray:
+        """Rotate a rectified line to the recognizer's expected direction."""
+        self._validated_patch(patch)
+        if self._ori is None:
+            raise OcrEngineError(
+                "net-unloaded", "this engine was built without the orientation net"
+            )
+        degrees, _confidence = classify_patch_orientation(
+            self._runtime,
+            self._ori,
+            patch,
+            self._models.orientation_blobs,
+            self._models.orientation_labels,
+        )
+        return rotate_patch(patch, degrees)
 
     def recognise(self, patch: np.ndarray) -> tuple[str, float]:
         """One rectified patch through the recognition net and the CTC decode."""
@@ -269,6 +288,12 @@ class OcrEngine:
             return decode_ctc(logits, self._characters, self._models.ctc_offset)
         except CtcDictionaryMismatchError as error:
             raise OcrEngineError("dictionary-mismatch", str(error)) from error
+
+    @staticmethod
+    def _resolved_nets(models: OcrModels, nets: tuple[str, ...] | None) -> tuple[str, ...]:
+        if nets is None:
+            nets = ("det", "ori", "rec") if models.orientation_param is not None else ("det", "rec")
+        return OcrEngine._validated_nets(nets)
 
     @staticmethod
     def _validated_nets(nets: tuple[str, ...]) -> tuple[str, ...]:

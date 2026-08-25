@@ -34,6 +34,13 @@ class _ParallelComponents:
     fallback_factory: Callable[[], PrimaryEngine] | None
 
 
+def _primary_nets(models: OcrModels, device_count: int) -> tuple[str, ...]:
+    has_orientation = getattr(models, "orientation_param", None) is not None
+    if device_count == 1:
+        return ("det", "ori", "rec") if has_orientation else ("det", "rec")
+    return ("det", "ori") if has_orientation else ("det",)
+
+
 def _wire_components(
     models: OcrModels,
     *,
@@ -57,7 +64,7 @@ def _wire_components(
     resolved = options or (InferenceOptions.fp16() if use_fp16 else InferenceOptions())
     devices = tuple((device_provider or hardware_devices)(runtime))
     build_engine = engine_factory or OcrEngine
-    primary_nets = ("det", "rec") if len(devices) == 1 else ("det",)
+    primary_nets = _primary_nets(models, len(devices))
     primary = build_engine(
         models,
         runtime=runtime,

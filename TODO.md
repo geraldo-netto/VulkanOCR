@@ -24,7 +24,6 @@
 | VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |
 | VOCR-0117 | open | medium | s | Add per-process DRM fdinfo proof where supported and retain AMD `gpu_busy_percent` as an explicitly system-wide fallback. |
 | VOCR-0118 | open | medium | s | Add fake AMD, Intel, NVIDIA, missing-counter, and wrong-device proof tests plus CLI documentation for each telemetry state. |
-| VOCR-0120 | open | high | s | Classify each detected patch's orientation and rotate it to the recognizer's expected direction before CTC inference. |
 | VOCR-0121 | open | high | s | Add horizontal, 90-degree, 180-degree, and 270-degree unit and live-GPU regressions plus orientation cases in the corpus runner. |
 | VOCR-0122 | open | medium | s | Add a configurable script-aware false-positive policy that can use confidence and page/model language context without globally suppressing CJK output. |
 | VOCR-0123 | open | medium | s | Apply the false-positive policy during result assembly and prove it rejects labeled icons while retaining legitimate CJK corpus lines. |
