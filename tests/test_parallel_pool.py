@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 from vulkanocr.detection import TextRegion
-from vulkanocr.parallel import ParallelOcr
-from vulkanocr.workers import WorkerAnswer
+from vulkanocr.parallel import ParallelOcr, PrimaryEngine
+from vulkanocr.workers import WorkerAnswer, WorkerFleet
 
 
 def _region(y: float) -> TextRegion:
@@ -47,20 +47,45 @@ class FakeFleet:
         self.closed = True
 
 
-def _pool(fleet, pairs):
-    pool = ParallelOcr.__new__(ParallelOcr)
-    pool._fleet = fleet
-    pool._fallback = None
-    pool._fallback_factory = None
-    pool._generation = 0
-    pool._closed = False
-    pool._primary = SimpleNamespace(
-        crops=lambda _rgb: pairs,
-        recognise=lambda _patch: ("fallback", 0.9),
-        device_name="Fast GPU",
-        close=lambda: None,
+class FakePrimary:
+    device_name = "Fast GPU"
+
+    def __init__(self, pairs, result=("fallback", 0.9)):
+        self.pairs = pairs
+        self.result = result
+        self.close_calls = 0
+
+    def crops(self, _rgb):
+        return self.pairs
+
+    def recognise(self, _patch):
+        return self.result
+
+    def close(self):
+        self.close_calls += 1
+
+
+def _pool(fleet: WorkerFleet | None, pairs):
+    primary = FakePrimary(pairs)
+    engines: list[PrimaryEngine] = []
+
+    def build_engine(*_args, **_kwargs) -> PrimaryEngine:
+        engine = primary if not engines else FakePrimary([], ("recovered", 0.9))
+        engines.append(engine)
+        return engine
+
+    device_count = 1 if fleet is None else 2
+    devices = tuple(
+        SimpleNamespace(index=index, name=f"GPU {index}") for index in range(device_count)
     )
-    return pool
+    pool = ParallelOcr(
+        object(),
+        runtime=object(),
+        device_provider=lambda _runtime: devices,
+        engine_factory=build_engine,
+        fleet_factory=None if fleet is None else lambda *_args: fleet,
+    )
+    return pool, primary, engines
 
 
 def _pairs():
@@ -79,8 +104,9 @@ def test_stale_reply_cannot_poison_the_next_page():
         WorkerAnswer(0, 2, 2, ("third", 0.9), 100.0),
     ]
     fleet = FakeFleet({0: 1.0, 1: 1.0}, replies, {0: "Fast GPU", 1: "iGPU"})
-    pool = _pool(fleet, _pairs())
-    pool._generation = 1
+    pool, primary, _engines = _pool(fleet, [])
+    pool.read(np.zeros((1, 1, 3), dtype=np.uint8))
+    primary.pairs = _pairs()
 
     result = pool.read(np.zeros((100, 100, 3), dtype=np.uint8))
 
@@ -97,7 +123,7 @@ def test_real_crops_refine_a_wrong_probe_seed():
         WorkerAnswer(1, 1, 2, ("three", 0.9), 100.0),
     ]
     fleet = FakeFleet({0: 1.0, 1: 1.0}, replies)
-    pool = _pool(fleet, _pairs())
+    pool, _primary, _engines = _pool(fleet, _pairs())
 
     pool.read(np.zeros((100, 100, 3), dtype=np.uint8))
 
@@ -111,7 +137,7 @@ def test_slow_device_gets_no_work_fast_device_finishes_sooner():
         WorkerAnswer(0, 1, 2, ("third", 0.9), 100.0),
     ]
     fleet = FakeFleet({0: 1.0, 1: 10.0}, replies)
-    pool = _pool(fleet, _pairs())
+    pool, _primary, _engines = _pool(fleet, _pairs())
 
     pool.read(np.zeros((100, 100, 3), dtype=np.uint8))
 
@@ -126,7 +152,7 @@ def test_near_equal_devices_split_the_page():
         WorkerAnswer(0, 1, 2, ("third", 0.9), 100.0),
     ]
     fleet = FakeFleet({0: 1.0, 1: 1.2}, replies)
-    pool = _pool(fleet, _pairs())
+    pool, _primary, _engines = _pool(fleet, _pairs())
 
     pool.read(np.zeros((100, 100, 3), dtype=np.uint8))
 
@@ -135,7 +161,7 @@ def test_near_equal_devices_split_the_page():
 
 
 def test_absent_fleet_reads_on_single_device_primary():
-    pool = _pool(None, _pairs())
+    pool, _primary, _engines = _pool(None, _pairs())
 
     result = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
 
@@ -144,39 +170,25 @@ def test_absent_fleet_reads_on_single_device_primary():
 
 
 def test_empty_multi_gpu_fleet_builds_and_reuses_lazy_recognition_fallback():
-    pool = _pool(FakeFleet({}, [], {}), _pairs())
-    built = []
-
-    class Fallback:
-        device_name = "Fast GPU"
-
-        def recognise(self, _patch):
-            return ("recovered", 0.9)
-
-        def close(self):
-            return None
-
-    pool._fallback_factory = lambda: built.append(Fallback()) or built[-1]
+    pool, _primary, built = _pool(FakeFleet({}, [], {}), _pairs())
 
     first = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
     second = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
 
     assert [line.text for line in first.lines] == ["recovered"] * 3
     assert [line.text for line in second.lines] == ["recovered"] * 3
-    assert len(built) == 1
+    assert len(built) == 2
 
 
 def test_close_is_safe_to_repeat():
     fleet = FakeFleet({0: 1.0, 1: 1.0}, [])
-    closed = []
-    pool = _pool(fleet, [])
-    pool._primary = SimpleNamespace(close=lambda: closed.append(True))
+    pool, primary, _engines = _pool(fleet, [])
 
     pool.close()
     pool.close()
 
     assert fleet.closed is True
-    assert closed == [True]
+    assert primary.close_calls == 1
 
 
 def test_one_device_builds_no_worker_fleet(monkeypatch):
@@ -234,6 +246,12 @@ def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
         def close(self):
             return None
 
+        def crops(self, _rgb):
+            return []
+
+        def recognise(self, _patch):
+            return ("", 0.0)
+
     def build_engine(received_models, **kwargs):
         built.append((received_models, kwargs))
         return FakeEngine()
@@ -255,12 +273,12 @@ def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
     assert built[0][1]["device"] is devices[0]
     assert built[0][1]["nets"] == ("det",)
     assert built[1][0] is models and built[1][1] == devices
-    assert built[1][2] is pool._options
+    options = built[1][2]
     pool._fallback_recognizer()
     assert built[2][0] is models
     assert built[2][1]["runtime"] is runtime
     assert built[2][1]["device"] is devices[0]
-    assert built[2][1]["options"] is pool._options
+    assert built[2][1]["options"] is options
     assert built[2][1]["nets"] == ("rec",)
 
 
