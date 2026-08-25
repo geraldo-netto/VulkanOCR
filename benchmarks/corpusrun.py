@@ -4,7 +4,7 @@ Three scripts carried this body verbatim — warm pass, per-case timing, the
 row document, the per-case print, the results file — and the row schema is
 ``compare_engines.py``'s input contract, so one runner drifting broke the
 table silently. One copy, like ``scoring.py`` and ``strips.py`` before it
-(VOCR-0055): a runner supplies ``read(path) -> str`` and the tag; the loop
+(VOCR-0055): a runner supplies ``read(path) -> sequence[str]`` and the tag; the loop
 supplies everything the table relies on.
 """
 
@@ -14,7 +14,7 @@ import json
 import time
 from pathlib import Path
 
-from scoring import score
+from scoring import score_lines
 
 
 def run_corpus(corpus: Path, cases: list[dict], read, *, tag: str, device: str, out: Path):
@@ -29,14 +29,16 @@ def run_corpus(corpus: Path, cases: list[dict], read, *, tag: str, device: str, 
     rows = []
     for case in cases:
         start = time.perf_counter()
-        observed = read(corpus / case["image"])
+        observed_lines = list(read(corpus / case["image"]))
+        truth_lines = list(case["lines"])
         elapsed = (time.perf_counter() - start) * 1000
         row = {
             "id": case["id"],
             "variant": case["variant"],
             "ms": elapsed,
-            "observed": observed,
-            **score(" ".join(case["lines"]), observed),
+            "truth_lines": truth_lines,
+            "observed_lines": observed_lines,
+            **score_lines(truth_lines, observed_lines),
         }
         rows.append(row)
         print(

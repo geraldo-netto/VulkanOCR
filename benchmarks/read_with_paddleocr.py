@@ -49,13 +49,13 @@ def main() -> int:
         f"paddle-{paddle.__version__}/{models}/onednn-{'on' if mkldnn else 'off'}"
     )
 
-    def read(path) -> str:
+    def read(path) -> list[str]:
         result = ocr.predict(str(path))
         texts = []
         for page in result:
             data = page.json["res"] if hasattr(page, "json") else page
             texts.extend(data.get("rec_texts", []))
-        return " ".join(texts)
+        return texts
 
     run_corpus(
         corpus,

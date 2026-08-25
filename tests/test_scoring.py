@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "benchmarks"))
-from scoring import levenshtein, load_rgb, normalise, score  # noqa: E402
+from scoring import levenshtein, load_rgb, normalise, score, score_lines  # noqa: E402
 
 
 class TestNormalise:
@@ -56,6 +56,10 @@ class TestScore:
         result = score("", "ghost text")
         assert result["cer"] >= 0.0
         assert result["exact"] is False
+
+    def test_ordered_line_sequences_keep_existing_score_arithmetic(self):
+        assert score_lines(["first line", "second line"], ["first line", "second line"])["exact"]
+        assert score_lines(["first line", "second line"], ["second line", "first line"])["cer"] > 0
 
 
 class TestLoadRgb:

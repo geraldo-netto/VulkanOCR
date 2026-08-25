@@ -14,6 +14,7 @@ the property the caller of an OCR engine actually uses.
 from __future__ import annotations
 
 import unicodedata
+from collections.abc import Sequence
 from pathlib import Path
 
 
@@ -72,3 +73,8 @@ def score(truth: str, observed: str) -> dict:
         "wer": words / max(1, len(truth_text.split())),
         "exact": truth_text == observed_text,
     }
+
+
+def score_lines(truth: Sequence[str], observed: Sequence[str]) -> dict:
+    """Score ordered line sequences without erasing their document shape."""
+    return score(" ".join(truth), " ".join(observed))

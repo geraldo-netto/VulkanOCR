@@ -16,14 +16,14 @@ def main() -> int:
     psm = sys.argv[2] if len(sys.argv) > 2 else "6"
     cases = json.loads((corpus / "ground-truth.json").read_text(encoding="utf-8"))
 
-    def read(path) -> str:
+    def read(path) -> list[str]:
         done = subprocess.run(
             ["tesseract", str(path), "stdout", "-l", "eng", "--psm", psm],
             capture_output=True,
             text=True,
             check=False,
         )
-        return " ".join(done.stdout.split())
+        return [line for line in done.stdout.splitlines() if line.strip()]
 
     run_corpus(
         corpus,

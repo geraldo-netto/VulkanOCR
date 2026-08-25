@@ -13,14 +13,19 @@ def test_the_loop_warms_first_measures_each_case_and_writes_the_document(tmp_pat
     corpus = tmp_path / "corpus"
     corpus.mkdir()
     cases = [
-        {"id": "case00-clean", "image": "a.png", "lines": ["alpha beta"], "variant": "clean"},
+        {
+            "id": "case00-clean",
+            "image": "a.png",
+            "lines": ["alpha beta", "line two"],
+            "variant": "clean",
+        },
         {"id": "case01-blur", "image": "b.png", "lines": ["gamma"], "variant": "blur"},
     ]
     seen = []
 
-    def read(path) -> str:
+    def read(path) -> list[str]:
         seen.append(path.name)
-        return {"a.png": "alpha beta", "b.png": "wrong"}[path.name]
+        return {"a.png": ["alpha beta", "line two"], "b.png": ["wrong"]}[path.name]
 
     out = tmp_path / "results-fake.json"
     rows = run_corpus(corpus, cases, read, tag="fake/engine", device="Test GPU", out=out)
@@ -36,7 +41,8 @@ def test_the_loop_warms_first_measures_each_case_and_writes_the_document(tmp_pat
         "id",
         "variant",
         "ms",
-        "observed",
+        "truth_lines",
+        "observed_lines",
         "char_distance",
         "char_length",
         "word_distance",
@@ -45,6 +51,8 @@ def test_the_loop_warms_first_measures_each_case_and_writes_the_document(tmp_pat
         "wer",
         "exact",
     }
+    assert rows[0]["truth_lines"] == ["alpha beta", "line two"]
+    assert rows[0]["observed_lines"] == ["alpha beta", "line two"]
     assert rows[0]["exact"] is True and rows[1]["exact"] is False
     printed = capsys.readouterr().out
     assert "case00-clean" in printed and "cer=" in printed

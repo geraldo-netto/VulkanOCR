@@ -31,10 +31,10 @@ def main() -> int:
 
     with OcrEngine(models_for(model_set), options=options_for_precision(precision)) as engine:
 
-        def read(path) -> str:
+        def read(path) -> list[str]:
             # read() already sorts by (center_y, center_x); sorting again here
             # implied the engine\'s order could not be trusted.
-            return " ".join(line.text for line in engine.read(load_rgb(path)).lines)
+            return [line.text for line in engine.read(load_rgb(path)).lines]
 
         suffix = f"-{precision}" if precision != "fp32" else ""
         tag_suffix = f"+{precision}" if precision != "fp32" else ""
