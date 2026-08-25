@@ -1,12 +1,15 @@
 """Worker-process adapter behavior without a GPU or child process."""
 
+import sys
 from queue import Queue
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
-from vulkanocr.engine import OcrEngineError
-from vulkanocr.workers import MultiprocessingWorkerFleet
+from vulkanocr.engine import OcrEngineError, OcrModels
+from vulkanocr.options import InferenceOptions
+from vulkanocr.workers import MultiprocessingWorkerFleet, worker_main
 
 
 class FakeProcess:
@@ -106,3 +109,49 @@ def test_close_is_idempotent_and_reaps_every_process():
     assert [channel.sent for channel in channels] == [[None], [None]]
     assert all(not process.is_alive() for process in processes)
     assert all(channel.closed and channel.cancelled for channel in channels)
+
+
+def test_each_worker_loads_and_closes_one_recognition_only_engine(monkeypatch):
+    from vulkanocr import workers
+
+    built = []
+
+    class FakeEngine:
+        device_name = "GPU"
+
+        def __init__(self, *_args, **kwargs):
+            self.nets = kwargs["nets"]
+            self.closed = False
+            built.append(self)
+
+        def recognise(self, _patch):
+            return ("", 0.0)
+
+        def close(self):
+            self.closed = True
+
+    runtime = SimpleNamespace()
+    monkeypatch.setitem(sys.modules, "ncnn", runtime)
+    monkeypatch.setattr(workers, "OcrEngine", FakeEngine)
+    monkeypatch.setattr(
+        workers,
+        "hardware_devices",
+        lambda _runtime: (
+            SimpleNamespace(index=0, name="GPU 0"),
+            SimpleNamespace(index=1, name="GPU 1"),
+        ),
+    )
+    for index in (0, 1):
+        requests, replies = Queue(), Queue()
+        requests.put(None)
+        worker_main(
+            index,
+            cast(OcrModels, object()),
+            InferenceOptions(),
+            requests,
+            replies,
+        )
+        assert replies.get()[0] == "ready"
+
+    assert [engine.nets for engine in built] == [("rec",), ("rec",)]
+    assert all(engine.closed for engine in built)

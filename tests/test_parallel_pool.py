@@ -262,3 +262,47 @@ def test_runtime_devices_engine_and_fleet_are_injected_without_module_patches():
     assert built[2][1]["device"] is devices[0]
     assert built[2][1]["options"] is pool._options
     assert built[2][1]["nets"] == ("rec",)
+
+
+def test_detection_parent_and_lazy_fallback_release_every_loaded_net():
+    devices = (
+        SimpleNamespace(index=0, name="Fast GPU"),
+        SimpleNamespace(index=1, name="iGPU"),
+    )
+    engines = []
+    fleet = FakeFleet({}, [], {})
+
+    class RecordingEngine:
+        device_name = "Fast GPU"
+
+        def __init__(self, *_args, nets, **_kwargs):
+            self.nets = nets
+            self.closed = False
+            engines.append(self)
+
+        def crops(self, _rgb):
+            return [(_region(10.0), np.zeros((48, 100, 3), dtype=np.uint8))]
+
+        def recognise(self, _patch):
+            return ("recovered", 0.9)
+
+        def close(self):
+            self.closed = True
+
+    pool = ParallelOcr(
+        object(),
+        runtime=object(),
+        device_provider=lambda _runtime: devices,
+        engine_factory=RecordingEngine,
+        fleet_factory=lambda *_args: fleet,
+    )
+
+    first = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+    second = pool.read(np.zeros((10, 10, 3), dtype=np.uint8))
+    pool.close()
+
+    assert [line.text for line in first.lines] == ["recovered"]
+    assert [line.text for line in second.lines] == ["recovered"]
+    assert [engine.nets for engine in engines] == [("det",), ("rec",)]
+    assert all(engine.closed for engine in engines)
+    assert fleet.closed is True
