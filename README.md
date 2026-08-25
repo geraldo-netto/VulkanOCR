@@ -16,7 +16,7 @@ rate is lower, and it is faster:
 | character error rate | 0.0159 | 0.0158 |
 | word error rate | **0.0390** | 0.0498 |
 | images read perfectly | 75 % | 73 % — 41 vs 40 of 55, equivalent |
-| median page | **99 ms** (66 ms with fp16) | 189 ms |
+| warm, model-loaded median page | **99 ms** (66 ms with fp16) | 189 ms |
 
 The same PP-OCRv6 medium detector/recognizer tier underpins both sides, though
 VulkanOCR uses the converted ncnn graphs and also runs its catalogued
@@ -81,6 +81,14 @@ git clone https://github.com/Avafly/PaddleOCR-ncnn-CPP   # ncnn conversions, MIT
 git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # ncnn conversion, BSD-3
 # cloned elsewhere? point VULKANOCR_MODELS_ROOT at the directory holding both
 ```
+
+The catalog and published measurements were verified with Avafly release
+[`v0.3.0`](https://github.com/Avafly/PaddleOCR-ncnn-CPP/releases/tag/v0.3.0)
+and nihui release
+[`20260527.671ac4a`](https://github.com/nihui/ncnn-android-ppocrv5/releases/tag/20260527.671ac4a).
+The convenient clone commands above follow the repositories' current default
+branches; they are not immutable dependency pins. `VOCR-0129` tracks a
+checksum-pinned component installer.
 
 The converted repositories have the licences shown above; the underlying
 PaddlePaddle model weights are Apache-2.0. Avafly also supplies the PP-LCNet

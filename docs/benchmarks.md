@@ -43,15 +43,21 @@ remain distinct. Aggregate denominators are total ground-truth characters or
 words, and exact means equality of the normalised line multisets.
 
 ```sh
-.venv/bin/python benchmarks/make_corpus.py /tmp/corpus
+benchmark_root="$(mktemp -d)"
+.venv/bin/python benchmarks/make_corpus.py "$benchmark_root/corpus"
 .venv/bin/python benchmarks/make_corpus.py --script-samples samples/corpus
 .venv/bin/python benchmarks/make_corpus.py --orientation-samples samples/orientation-corpus
-.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium
-.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision fp16
-python3 benchmarks/read_with_tesseract.py /tmp/corpus 6
-<paddle-venv>/bin/python benchmarks/read_with_paddleocr.py /tmp/corpus
-python3 benchmarks/compare_engines.py /tmp /tmp/corpus
+.venv/bin/python benchmarks/read_with_vulkanocr.py "$benchmark_root/corpus" v6-medium
+.venv/bin/python benchmarks/read_with_vulkanocr.py "$benchmark_root/corpus" v6-medium --precision fp16
+.venv/bin/python benchmarks/read_with_tesseract.py "$benchmark_root/corpus" 6
+<paddle-venv>/bin/python benchmarks/read_with_paddleocr.py "$benchmark_root/corpus"
+.venv/bin/python benchmarks/compare_engines.py "$benchmark_root" "$benchmark_root/corpus"
 ```
+
+Each runner writes `results-*.json` beside the corpus directory, and the
+comparator loads every matching file from that parent. Always use a fresh
+benchmark root as above: an older result with the same case ids is valid
+input and would otherwise become an unintended comparison row.
 
 The Paddle virtualenv installs the `paddle` extra's pins
 (`paddleocr>=3.7,<4`, `paddlepaddle>=3.2,<3.3`); the corpus generator needs
@@ -102,12 +108,15 @@ Per-degradation CER, from the same run:
 
 | variant | v6-medium | +fp16 | paddle+oneDNN | tesseract |
 | --- | --- | --- | --- | --- |
-| clean 28px sans | 0.006 | 0.006 | 0.006 | 0.000 |
-| clean 12px sans | 0.006 | 0.006 | 0.006 | 0.012 |
 | blur 5px | 0.000 | 0.000 | 0.000 | 0.000 |
-| noise σ25 | 0.000 | 0.000 | 0.002 | 0.000 |
-| JPEG q30 | 0.006 | 0.006 | 0.004 | 0.000 |
+| clean 12px sans | 0.006 | 0.006 | 0.006 | 0.012 |
+| clean 16px sans | 0.006 | 0.006 | 0.006 | 0.006 |
+| clean 28px mono | 0.002 | 0.002 | 0.004 | 0.002 |
+| clean 28px sans | 0.006 | 0.006 | 0.006 | 0.000 |
+| clean 28px serif | 0.002 | 0.002 | 0.006 | 0.006 |
 | faded 40 % | 0.002 | 0.002 | 0.006 | 0.000 |
+| JPEG q30 | 0.006 | 0.006 | 0.004 | 0.000 |
+| noise σ25 | 0.000 | 0.000 | 0.002 | 0.000 |
 | skew 5° | 0.000 | 0.000 | 0.000 | 0.025 |
 | skew 12° | 0.146 | 0.146 | 0.135 | 0.320 |
 

@@ -41,9 +41,10 @@ v6 profiles. Neither upstream is modified.
 By default fp16 packed/storage/arithmetic are all disabled for the measured
 fp32 baseline. `InferenceOptions` states fp16 and int8 policy for every net;
 `--precision fp32|fp16|int8` exposes the same choice in the CLI and corpus
-runner. fp16 bought 1.5x on recognition at no measured accuracy cost
-(`docs/benchmarks.md`); int8 requires a quantized graph and does not transform
-the float catalog entries. No quantized profile is currently catalogued.
+runner. fp16 reduced the warm, end-to-end corpus p50 from 99 ms to 66 ms
+(1.5×) at no measured accuracy cost (`docs/benchmarks.md`); int8 requires a
+quantized graph and does not transform the float catalog entries. No quantized
+profile is currently catalogued.
 
 ## Run
 
