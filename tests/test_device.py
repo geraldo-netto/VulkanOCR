@@ -213,6 +213,36 @@ class TestHalfAnEngineIsAskedFor:
         engine = OcrEngine(models, runtime=runtime, nets=("rec",))
         assert engine._det is None and engine._rec is not None
 
+    def test_an_orientation_only_engine_uses_the_same_options_device_and_lifecycle(self, tmp_path):
+        from vulkanocr.engine import OcrEngine, OcrModels
+        from vulkanocr.options import InferenceOptions
+
+        runtime = FakeRuntime([FakeInfo("Radeon", 0)])
+        runtime.Net = _FakeNet
+        orientation = tmp_path / "orientation.param"
+        orientation.write_text("7767517\n", encoding="utf-8")
+        orientation.with_suffix(".bin").write_bytes(b"")
+        keys = tmp_path / "keys.txt"
+        keys.write_text("a\nb\n", encoding="utf-8")
+        options = InferenceOptions.fp16()
+        models = OcrModels(
+            tmp_path / "absent-det.param",
+            tmp_path / "absent-rec.param",
+            keys,
+            orientation_param=orientation,
+        )
+
+        engine = OcrEngine(models, runtime=runtime, options=options, nets=("ori",))
+        held = engine._ori
+
+        assert engine._det is None and engine._rec is None and held is not None
+        assert held.vulkan_device == 0
+        for name in InferenceOptions.__dataclass_fields__:
+            assert getattr(held.opt, name) == getattr(options, name)
+        engine.close()
+        engine.close()
+        assert held.cleared == 1 and engine._ori is None
+
 
 class TestEngineInputValidation:
     def engine(self, tmp_path, **options):

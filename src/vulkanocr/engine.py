@@ -174,8 +174,7 @@ class OcrEngine:
                 raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
         self._runtime: Any = runtime
         # The nets choice is checked before it decides what must exist.
-        if not nets or any(name not in ("det", "rec") for name in nets):
-            raise OcrEngineError("nets-invalid", "nets must name 'det', 'rec', or both")
+        nets = self._validated_nets(nets)
         self._models = models.validated(nets)
         self._target_size = self._validated_target_size(target_size)
         self._options = self._resolved_options(options, use_vulkan, use_fp16)
@@ -187,10 +186,15 @@ class OcrEngine:
         # ever recognises, and its unused detection net still held hundreds
         # of MiB of Vulkan allocations on every device.
         self._det = None
+        self._ori = None
         self._rec = None
         try:
             if "det" in nets:
                 self._det = self._load_net(models.det_param)
+            if "ori" in nets:
+                if models.orientation_param is None:  # guarded by validated(), narrows the type
+                    raise OcrEngineError("model-missing", "orientation graph is absent")
+                self._ori = self._load_net(models.orientation_param)
             if "rec" in nets:
                 self._rec = self._load_net(models.rec_param)
         except BaseException:
@@ -212,7 +216,7 @@ class OcrEngine:
         built engines in a loop accumulated one device's worth per pass.
         Safe to call twice, and called for you by the context manager.
         """
-        for name in ("_det", "_rec"):
+        for name in ("_det", "_ori", "_rec"):
             net = getattr(self, name, None)
             if net is not None:
                 net.clear()
@@ -265,6 +269,12 @@ class OcrEngine:
             return decode_ctc(logits, self._characters, self._models.ctc_offset)
         except CtcDictionaryMismatchError as error:
             raise OcrEngineError("dictionary-mismatch", str(error)) from error
+
+    @staticmethod
+    def _validated_nets(nets: tuple[str, ...]) -> tuple[str, ...]:
+        if not nets or any(name not in ("det", "ori", "rec") for name in nets):
+            raise OcrEngineError("nets-invalid", "nets must contain only 'det', 'ori', and 'rec'")
+        return nets
 
     @staticmethod
     def _validated(rgb: np.ndarray) -> None:
