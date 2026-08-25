@@ -30,6 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "fonttools>=4.53",
     "jsonschema>=4.23",
     "pillow>=10.0",
     "pyright>=1.1.411,<2",
@@ -38,7 +39,7 @@ dev = [
 ]
 # The corpus generator renders text through Pillow; everything else in
 # benchmarks/ runs on the engine's own dependencies. Installed in THIS venv.
-corpus = ["jsonschema>=4.23", "pillow>=10.0"]
+corpus = ["fonttools>=4.53", "jsonschema>=4.23", "pillow>=10.0"]
 # The PaddleOCR comparison runner's pins, for a SEPARATE virtualenv — never
 # this one (docs/benchmarks.md says why the runner is executed from Paddle's
 # own venv). PaddleOCR is pinned below 3.3: paddlepaddle 3.3.1's PIR-to-oneDNN

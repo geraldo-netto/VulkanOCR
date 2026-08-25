@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SCHEMA_PATH = Path(__file__).with_name("corpus-case.schema.json")
 
 

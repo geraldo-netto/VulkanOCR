@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "cases": [
     {
       "id": "orientation-000deg",
@@ -12,7 +12,9 @@
       "font": {
         "family": "DejaVu Sans",
         "file": "DejaVuSans.ttf",
-        "license": "Bitstream Vera Fonts Copyright"
+        "license": "Bitstream Vera Fonts Copyright",
+        "source": "https://dejavu-fonts.github.io/",
+        "version": "Version 2.37"
       },
       "palette": {
         "foreground": "#000000",
@@ -50,7 +52,9 @@
       "font": {
         "family": "DejaVu Sans",
         "file": "DejaVuSans.ttf",
-        "license": "Bitstream Vera Fonts Copyright"
+        "license": "Bitstream Vera Fonts Copyright",
+        "source": "https://dejavu-fonts.github.io/",
+        "version": "Version 2.37"
       },
       "palette": {
         "foreground": "#000000",
@@ -88,7 +92,9 @@
       "font": {
         "family": "DejaVu Sans",
         "file": "DejaVuSans.ttf",
-        "license": "Bitstream Vera Fonts Copyright"
+        "license": "Bitstream Vera Fonts Copyright",
+        "source": "https://dejavu-fonts.github.io/",
+        "version": "Version 2.37"
       },
       "palette": {
         "foreground": "#000000",
@@ -126,7 +132,9 @@
       "font": {
         "family": "DejaVu Sans",
         "file": "DejaVuSans.ttf",
-        "license": "Bitstream Vera Fonts Copyright"
+        "license": "Bitstream Vera Fonts Copyright",
+        "source": "https://dejavu-fonts.github.io/",
+        "version": "Version 2.37"
       },
       "palette": {
         "foreground": "#000000",

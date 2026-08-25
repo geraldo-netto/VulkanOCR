@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://vulkanocr.dev/schema/corpus-case-v2.json",
+  "$id": "https://vulkanocr.dev/schema/corpus-case-v3.json",
   "title": "VulkanOCR corpus manifest",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "cases"],
   "properties": {
-    "schema_version": {"const": 2},
+    "schema_version": {"const": 3},
     "cases": {
       "type": "array",
       "items": {"$ref": "#/$defs/case"}
@@ -50,10 +50,12 @@
         "font": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["family", "file", "license"],
+          "required": ["family", "file", "source", "version", "license"],
           "properties": {
             "family": {"type": "string", "minLength": 1},
             "file": {"type": "string", "minLength": 1},
+            "source": {"type": "string", "minLength": 1},
+            "version": {"type": "string", "minLength": 1},
             "license": {"type": "string", "minLength": 1}
           }
         },

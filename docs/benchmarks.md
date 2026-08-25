@@ -12,10 +12,12 @@ exact ground truth: three sizes, three fonts, 5° and 12° skew, blur, noise,
 JPEG q30, and a faded scan. Synthetic on purpose — a comparison needs
 identical inputs and exact truth for every engine. A hand-transcribed scan
 holdout is still the honest acceptance corpus; this is not it and says so.
-`ground-truth.json` uses corpus schema version 2 and records each case's
-script, BCP 47 language, exact line sequence, font/licence, palette, rendered
-size, background objects, variant, and relative image path. Generation fails
-before writing an invalid manifest.
+`ground-truth.json` uses corpus schema version 3 and records each case's
+script, BCP 47 language, exact line sequence, font source/version/licence,
+palette, rendered size, background objects, variant, and relative image path.
+Generation checks each font covers its case's characters and fails before
+writing an invalid manifest. Use repeatable `--font-root PATH` options to
+search local font collections before the documented system paths.
 Each case also declares VulkanOCR, PaddleOCR, and Tesseract model/language
 selection. Runners warm and dispatch per declared selection and refuse the
 whole corpus if any case has no model for that engine; they never substitute a

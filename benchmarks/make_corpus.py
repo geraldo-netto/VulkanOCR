@@ -13,6 +13,8 @@ import argparse
 import math
 import pathlib
 import sys
+import unicodedata
+from collections.abc import Sequence
 
 import cv2
 import numpy as np
@@ -31,6 +33,10 @@ FONT_FACTS = {
 }
 FONT_LICENSE = "Bitstream Vera Fonts Copyright"
 NOTO_LICENSE = "SIL Open Font License 1.1"
+FONT_SOURCES = {
+    FONT_LICENSE: "https://dejavu-fonts.github.io/",
+    NOTO_LICENSE: "https://github.com/notofonts",
+}
 
 DOCUMENTS = [
     {
@@ -389,10 +395,64 @@ class CorpusWriter:
         )
 
 
-def _validate_font_paths(paths) -> None:
-    missing = sorted({str(path) for path in paths if not pathlib.Path(path).is_file()})
-    if missing:
-        raise FileNotFoundError(f"configured corpus fonts not found: {', '.join(missing)}")
+class FontResolver:
+    """Find configured fonts and prove they cover every rendered character."""
+
+    def __init__(self, roots: Sequence[pathlib.Path] = ()):
+        self.roots = tuple(roots)
+        self._facts: dict[tuple[pathlib.Path, int], tuple[str, frozenset[int]]] = {}
+
+    def document(self, document: dict) -> dict:
+        path = self._find(pathlib.Path(document["font_path"]))
+        index = document.get("font_index", 0)
+        version, codepoints = self._font_facts(path, index)
+        missing = sorted(
+            {
+                character
+                for line in document["lines"]
+                for character in line
+                if not character.isspace()
+                and unicodedata.category(character) != "Cf"
+                and ord(character) not in codepoints
+            }
+        )
+        if missing:
+            rendered = " ".join(f"U+{ord(character):04X}" for character in missing)
+            raise ValueError(f"font {path} lacks required characters: {rendered}")
+        metadata = {
+            **document["font"],
+            "source": FONT_SOURCES[document["font"]["license"]],
+            "version": version,
+        }
+        return {**document, "font_path": str(path), "font": metadata}
+
+    def _find(self, configured: pathlib.Path) -> pathlib.Path:
+        for root in self.roots:
+            direct = root / configured.name
+            if direct.is_file():
+                return direct
+            found = next(root.rglob(configured.name), None) if root.is_dir() else None
+            if found is not None:
+                return found
+        if configured.is_file():
+            return configured
+        raise FileNotFoundError(f"configured corpus font not found: {configured}")
+
+    def _font_facts(self, path: pathlib.Path, index: int) -> tuple[str, frozenset[int]]:
+        key = (path, index)
+        if key not in self._facts:
+            from fontTools.ttLib import TTFont  # noqa: PLC0415
+
+            font = TTFont(path, fontNumber=index, lazy=True)
+            try:
+                name = font["name"]
+                record = name.getName(5, 3, 1) or name.getName(5, 1, 0)
+                version = record.toUnicode() if record is not None else "unknown"
+                codepoints = frozenset((font.getBestCmap() or {}).keys())
+            finally:
+                font.close()
+            self._facts[key] = version, codepoints
+        return self._facts[key]
 
 
 def render(lines, font_path, size, width=900, pad=24):
@@ -491,13 +551,21 @@ def _decorate_sample(
     return np.array(canvas), records
 
 
-def make_script_samples(output: pathlib.Path) -> int:
-    documents = [*SCRIPT_DOCUMENTS, *ALTERNATE_FONTS.values()]
-    _validate_font_paths(document["font_path"] for document in documents)
+def make_script_samples(
+    output: pathlib.Path, font_roots: Sequence[pathlib.Path] = ()
+) -> int:
+    resolver = FontResolver(font_roots)
+    resolved_documents = {
+        (document["language"], variant["font_role"]): resolver.document(
+            _font_document(document, variant["font_role"])
+        )
+        for document in SCRIPT_DOCUMENTS
+        for variant in SAMPLE_VARIANTS
+    }
     writer = CorpusWriter(output)
     for document in SCRIPT_DOCUMENTS:
         for variant in SAMPLE_VARIANTS:
-            font_document = _font_document(document, variant["font_role"])
+            font_document = resolved_documents[(document["language"], variant["font_role"])]
             array = render_script_document(font_document, variant["font_px"], variant["pad"])
             if variant["objects"]:
                 array, objects = _decorate_sample(array, variant["palette"], variant["objects"])
@@ -534,11 +602,13 @@ def make_script_samples(output: pathlib.Path) -> int:
     return 0
 
 
-def make_orientation_samples(output: pathlib.Path) -> int:
+def make_orientation_samples(
+    output: pathlib.Path, font_roots: Sequence[pathlib.Path] = ()
+) -> int:
     """Four cardinal page rotations for end-to-end orientation acceptance."""
-    _validate_font_paths([ORIENTATION_DOCUMENT["font_path"]])
+    document = FontResolver(font_roots).document(ORIENTATION_DOCUMENT)
     writer = CorpusWriter(output)
-    base = render_script_document(ORIENTATION_DOCUMENT, font_px=36, pad=48)
+    base = render_script_document(document, font_px=36, pad=48)
     for degrees, quarter_turns in ((0, 0), (90, 3), (180, 2), (270, 1)):
         array = np.rot90(base, quarter_turns).copy()
         case_id = f"orientation-{degrees:03d}deg"
@@ -547,11 +617,11 @@ def make_orientation_samples(output: pathlib.Path) -> int:
         writer.add(
             {
                 "id": case_id,
-                "script": ORIENTATION_DOCUMENT["script"],
-                "language": ORIENTATION_DOCUMENT["language"],
-                "direction": ORIENTATION_DOCUMENT["direction"],
-                "lines": ORIENTATION_DOCUMENT["lines"],
-                "font": ORIENTATION_DOCUMENT["font"],
+                "script": document["script"],
+                "language": document["language"],
+                "direction": document["direction"],
+                "lines": document["lines"],
+                "font": document["font"],
                 "palette": {"foreground": "#000000", "background": "#FFFFFF"},
                 "size": {"font_px": 36, "width_px": width, "height_px": height},
                 "background_objects": [],
@@ -602,19 +672,48 @@ def faded(array, factor):
     return np.clip(255 - (255 - array.astype(np.float32)) * factor, 0, 255).astype(np.uint8)
 
 
-def make_benchmark_samples(output: pathlib.Path) -> int:
-    _validate_font_paths(FONTS.values())
+def make_benchmark_samples(
+    output: pathlib.Path, font_roots: Sequence[pathlib.Path] = ()
+) -> int:
+    resolver = FontResolver(font_roots)
+    resolved_fonts = {}
+    for key, path in FONTS.items():
+        family, font_file = FONT_FACTS[key]
+        document = resolver.document(
+            {
+                "font_path": path,
+                "font": {"family": family, "file": font_file, "license": FONT_LICENSE},
+                "lines": [line for item in DOCUMENTS for line in item["lines"]],
+            }
+        )
+        resolved_fonts[key] = document
     writer = CorpusWriter(output)
 
     for index, document in enumerate(DOCUMENTS):
         lines = document["lines"]
-        base = render(lines, FONTS["sans"], 28)
+        base = render(lines, resolved_fonts["sans"]["font_path"], 28)
         variants = {
             "clean-28px-sans": (base, "sans", 28),
-            "clean-16px-sans": (render(lines, FONTS["sans"], 16), "sans", 16),
-            "clean-12px-sans": (render(lines, FONTS["sans"], 12, width=700), "sans", 12),
-            "clean-28px-serif": (render(lines, FONTS["serif"], 28), "serif", 28),
-            "clean-28px-mono": (render(lines, FONTS["mono"], 28), "mono", 28),
+            "clean-16px-sans": (
+                render(lines, resolved_fonts["sans"]["font_path"], 16),
+                "sans",
+                16,
+            ),
+            "clean-12px-sans": (
+                render(lines, resolved_fonts["sans"]["font_path"], 12, width=700),
+                "sans",
+                12,
+            ),
+            "clean-28px-serif": (
+                render(lines, resolved_fonts["serif"]["font_path"], 28),
+                "serif",
+                28,
+            ),
+            "clean-28px-mono": (
+                render(lines, resolved_fonts["mono"]["font_path"], 28),
+                "mono",
+                28,
+            ),
             "skew-5deg": (skew(base, 5), "sans", 28),
             "skew-12deg": (skew(base, 12), "sans", 28),
             "blur-5px": (blur(base, 5), "sans", 28),
@@ -625,7 +724,6 @@ def make_benchmark_samples(output: pathlib.Path) -> int:
         for name, (array, font_key, font_px) in variants.items():
             stem = f"case{index:02d}-{name}"
             image = f"{stem}.png"
-            family, font_file = FONT_FACTS[font_key]
             height, width = array.shape[:2]
             writer.add(
                 {
@@ -634,11 +732,7 @@ def make_benchmark_samples(output: pathlib.Path) -> int:
                     "language": document["language"],
                     "direction": "ltr",
                     "lines": lines,
-                    "font": {
-                        "family": family,
-                        "file": font_file,
-                        "license": FONT_LICENSE,
-                    },
+                    "font": resolved_fonts[font_key]["font"],
                     "palette": {"foreground": "#000000", "background": "#FFFFFF"},
                     "size": {"font_px": font_px, "width_px": width, "height_px": height},
                     "background_objects": [],
@@ -660,6 +754,13 @@ def main(argv: list[str] | None = None) -> int:
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--script-samples", type=pathlib.Path, metavar="OUTPUT")
     modes.add_argument("--orientation-samples", type=pathlib.Path, metavar="OUTPUT")
+    parser.add_argument(
+        "--font-root",
+        action="append",
+        default=[],
+        type=pathlib.Path,
+        help="search this directory before system font paths (repeatable)",
+    )
     arguments = parser.parse_args(argv)
     selected = [
         output
@@ -669,10 +770,10 @@ def main(argv: list[str] | None = None) -> int:
     if len(selected) != 1:
         parser.error("provide exactly one output path or sample mode")
     if arguments.script_samples is not None:
-        return make_script_samples(arguments.script_samples)
+        return make_script_samples(arguments.script_samples, arguments.font_root)
     if arguments.orientation_samples is not None:
-        return make_orientation_samples(arguments.orientation_samples)
-    return make_benchmark_samples(arguments.output)
+        return make_orientation_samples(arguments.orientation_samples, arguments.font_root)
+    return make_benchmark_samples(arguments.output, arguments.font_root)
 
 
 if __name__ == "__main__":

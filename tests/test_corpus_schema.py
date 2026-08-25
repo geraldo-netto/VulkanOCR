@@ -3,6 +3,7 @@
 import sys
 from copy import deepcopy
 from pathlib import Path
+from shutil import copyfile
 
 import numpy as np
 import pytest
@@ -15,7 +16,7 @@ from corpus_schema import (  # noqa: E402, I001
     validate_manifest,
 )
 import make_corpus as corpus_generator  # noqa: E402, I001
-from make_corpus import CorpusWriter  # noqa: E402, I001
+from make_corpus import CorpusWriter, FontResolver  # noqa: E402, I001
 from make_corpus import main as make_corpus  # noqa: E402, I001
 from make_corpus import make_orientation_samples  # noqa: E402, I001
 from make_corpus import make_script_samples  # noqa: E402, I001
@@ -31,6 +32,8 @@ def _case() -> dict:
         "font": {
             "family": "DejaVu Sans",
             "file": "DejaVuSans.ttf",
+            "source": "https://dejavu-fonts.github.io/",
+            "version": "Version 2.37",
             "license": "Bitstream Vera Fonts Copyright",
         },
         "palette": {"foreground": "#000000", "background": "#FFFFFF"},
@@ -46,12 +49,12 @@ def _case() -> dict:
     }
 
 
-def test_complete_version_two_manifest_is_valid():
-    validate_manifest({"schema_version": 2, "cases": [_case()]})
+def test_complete_version_three_manifest_is_valid():
+    validate_manifest({"schema_version": 3, "cases": [_case()]})
 
 
 def test_case_metadata_is_required_by_the_schema():
-    document = {"schema_version": 2, "cases": [_case()]}
+    document = {"schema_version": 3, "cases": [_case()]}
     del document["cases"][0]["background_objects"]
 
     with pytest.raises(ValueError, match="background_objects"):
@@ -60,16 +63,16 @@ def test_case_metadata_is_required_by_the_schema():
 
 def test_unknown_manifest_version_is_refused(tmp_path):
     path = tmp_path / "ground-truth.json"
-    path.write_text('{"schema_version": 3, "cases": []}', encoding="utf-8")
+    path.write_text('{"schema_version": 4, "cases": []}', encoding="utf-8")
 
-    with pytest.raises(ValueError, match="schema version 2"):
+    with pytest.raises(ValueError, match="schema version 3"):
         load_manifest(path)
 
 
 def test_duplicate_case_ids_are_refused():
     duplicate = deepcopy(_case())
     with pytest.raises(ValueError, match="case ids must be unique"):
-        validate_manifest({"schema_version": 2, "cases": [_case(), duplicate]})
+        validate_manifest({"schema_version": 3, "cases": [_case(), duplicate]})
 
 
 def test_runner_refuses_cases_without_its_declared_model():
@@ -114,6 +117,41 @@ def test_generator_validates_fonts_before_writing(tmp_path, monkeypatch):
     assert not (tmp_path / "corpus").exists()
 
 
+def test_font_resolver_prefers_a_configured_search_root(tmp_path):
+    font = tmp_path / "DejaVuSans.ttf"
+    copyfile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font)
+    document = {
+        "font_path": "/missing/DejaVuSans.ttf",
+        "font": {
+            "family": "DejaVu Sans",
+            "file": "DejaVuSans.ttf",
+            "license": corpus_generator.FONT_LICENSE,
+        },
+        "lines": ["covered"],
+    }
+
+    resolved = FontResolver([tmp_path]).document(document)
+
+    assert resolved["font_path"] == str(font)
+    assert resolved["font"]["source"] == "https://dejavu-fonts.github.io/"
+    assert resolved["font"]["version"]
+
+
+def test_font_resolver_rejects_missing_script_coverage():
+    document = {
+        "font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "font": {
+            "family": "DejaVu Sans",
+            "file": "DejaVuSans.ttf",
+            "license": corpus_generator.FONT_LICENSE,
+        },
+        "lines": ["花"],
+    }
+
+    with pytest.raises(ValueError, match="U\\+82B1"):
+        FontResolver().document(document)
+
+
 def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     assert make_script_samples(tmp_path) == 0
 
@@ -122,6 +160,8 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     russian = next(case for case in document["cases"] if case["language"] == "ru")
     assert russian["script"] == "Cyrl"
     assert russian["font"]["license"] == "SIL Open Font License 1.1"
+    assert russian["font"]["source"] == "https://github.com/notofonts"
+    assert russian["font"]["version"]
     assert "Ёж" in russian["lines"][1]
     assert (tmp_path / russian["image"]).is_file()
     greek = next(case for case in document["cases"] if case["language"] == "el")

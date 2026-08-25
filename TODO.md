@@ -8,7 +8,6 @@
 | VOCR-0078 | open | medium | s | Build labeled positive-CJK and negative glyph-icon/background-object cases that reproduce false readings such as `花` and `回`. |
 | VOCR-0079 | open | medium | xs | Define and document a geometry-based word-gap heuristic, including punctuation and right-to-left behavior, before adding whitespace postprocessing. |
 | VOCR-0080 | open | low | s | Unify benchmark engine lifecycle and no-text precondition handling in a shared harness; several scripts manually close resources only on success, while batching scripts crash on blank images through `min`, division by zero, or a zero range step. |
-| VOCR-0093 | open | medium | s | Add configurable font discovery with script-coverage checks and record each corpus font's source, version, and redistribution licence. |
 | VOCR-0116 | open | medium | s | Define a proof-provider result carrying selected-device identity, samples, supported state, and an unavailable reason so ambient work on another GPU cannot count as proof. |
 | VOCR-0117 | open | medium | s | Add per-process DRM fdinfo proof where supported and retain AMD `gpu_busy_percent` as an explicitly system-wide fallback. |
 | VOCR-0118 | open | medium | s | Add fake AMD, Intel, NVIDIA, missing-counter, and wrong-device proof tests plus CLI documentation for each telemetry state. |
