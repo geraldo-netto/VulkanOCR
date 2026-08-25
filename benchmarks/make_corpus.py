@@ -97,7 +97,23 @@ SCRIPT_DOCUMENTS = [
             "file": "NotoSans-Regular.ttf",
             "license": NOTO_LICENSE,
         },
-    }
+    },
+    {
+        "id": "greek-clean",
+        "script": "Grek",
+        "language": "el",
+        "direction": "ltr",
+        "lines": [
+            "Η γρήγορη αλεπού πηδά πάνω από τον τεμπέλη σκύλο.",
+            "ΐ, ΰ, ά, έ, ή, ί, ό, ύ, ώ — Μαΐου και ΑΪΔΙΟΪΚΟΪ!",
+        ],
+        "font_path": "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "font": {
+            "family": "Noto Sans",
+            "file": "NotoSans-Regular.ttf",
+            "license": NOTO_LICENSE,
+        },
+    },
 ]
 
 

@@ -77,3 +77,7 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
     assert russian["font"]["license"] == "SIL Open Font License 1.1"
     assert "Ёж" in russian["lines"][1]
     assert (tmp_path / russian["image"]).is_file()
+    greek = next(case for case in document["cases"] if case["language"] == "el")
+    assert greek["script"] == "Grek"
+    assert "ΐ, ΰ" in greek["lines"][1]
+    assert (tmp_path / greek["image"]).is_file()
