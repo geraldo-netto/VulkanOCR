@@ -33,7 +33,6 @@
 | VOCR-0094 | open | high | s | Make corpus runners select the declared language/model per case and refuse result sets whose case ids differ from the manifest. |
 | VOCR-0099 | open | medium | s | Compose named model profiles from detector and recognizer specifications so language-specific or quantized recognizers reuse an existing detector. |
 | VOCR-0100 | open | medium | s | Migrate `CATALOG`, `PORT_FACTS`, constructors, exports, and catalog tests to composed model profiles without changing existing names or defaults. |
-| VOCR-0101 | open | high | s | Define a worker-fleet protocol and isolate multiprocessing queues, processes, handshake parsing, retirement, and shutdown in one adapter. |
 | VOCR-0102 | open | high | s | Inject runtime, device enumeration, engine construction, and worker-fleet factories at `ParallelOcr` boundaries instead of importing concrete implementations internally. |
 | VOCR-0103 | open | high | s | Reduce `ParallelOcr` to detection, scheduler/fleet coordination, and result assembly over the extracted interfaces. |
 | VOCR-0104 | open | medium | s | Replace `ParallelOcr` tests that allocate with `__new__` and overwrite private concrete fields with protocol-backed fakes using normal construction. |

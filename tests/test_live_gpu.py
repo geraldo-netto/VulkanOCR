@@ -128,6 +128,7 @@ def test_a_dead_gpu_worker_is_a_named_refusal_not_a_hang():
     from vulkanocr.catalog import models_for
     from vulkanocr.engine import OcrEngineError
     from vulkanocr.parallel import ParallelOcr
+    from vulkanocr.workers import MultiprocessingWorkerFleet
 
     pool = ParallelOcr(models_for("v6-tiny"))
     if len(pool.device_names) < 2:
@@ -139,8 +140,10 @@ def test_a_dead_gpu_worker_is_a_named_refusal_not_a_hang():
     rgb = np.ascontiguousarray(page[:, :, ::-1])
     pool.read(rgb)
 
-    pool._workers[1].terminate()
-    pool._workers[1].join()
+    assert isinstance(pool._fleet, MultiprocessingWorkerFleet)
+    worker = list(pool._fleet._processes.values())[1]
+    worker.terminate()
+    worker.join()
 
     with pytest.raises(OcrEngineError, match="worker-died"):
         pool.read(rgb)
