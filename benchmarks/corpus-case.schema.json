@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://vulkanocr.dev/schema/corpus-case-v1.json",
+  "$id": "https://vulkanocr.dev/schema/corpus-case-v2.json",
   "title": "VulkanOCR corpus manifest",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "cases"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "cases": {
       "type": "array",
       "items": {"$ref": "#/$defs/case"}
@@ -30,6 +30,7 @@
         "palette",
         "size",
         "background_objects",
+        "recognition",
         "variant",
         "image"
       ],
@@ -90,6 +91,49 @@
                 "items": {"type": "integer", "minimum": 0}
               },
               "fill": {"$ref": "#/$defs/colour"}
+            }
+          }
+        },
+        "recognition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["vulkanocr", "paddleocr", "tesseract"],
+          "properties": {
+            "vulkanocr": {
+              "oneOf": [
+                {"type": "null"},
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["model"],
+                  "properties": {"model": {"type": "string", "minLength": 1}}
+                }
+              ]
+            },
+            "paddleocr": {
+              "oneOf": [
+                {"type": "null"},
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["language", "model"],
+                  "properties": {
+                    "language": {"type": "string", "minLength": 1},
+                    "model": {"type": "string", "minLength": 1}
+                  }
+                }
+              ]
+            },
+            "tesseract": {
+              "oneOf": [
+                {"type": "null"},
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["language"],
+                  "properties": {"language": {"type": "string", "minLength": 1}}
+                }
+              ]
             }
           }
         },

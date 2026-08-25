@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "cases": [
     {
       "id": "russian-cyrillic-clean",
@@ -25,6 +25,16 @@
         "height_px": 164
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ru",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "rus"
+        }
+      },
       "variant": "clean-36px",
       "image": "russian-cyrillic-clean.png"
     },
@@ -73,6 +83,16 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ru",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "rus"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "russian-cyrillic-warm-small.png"
     },
@@ -121,6 +141,16 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ru",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "rus"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "russian-cyrillic-night-large.png"
     },
@@ -148,6 +178,16 @@
         "height_px": 164
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "el",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "ell"
+        }
+      },
       "variant": "clean-36px",
       "image": "greek-clean.png"
     },
@@ -196,6 +236,16 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "el",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "ell"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "greek-warm-small.png"
     },
@@ -244,6 +294,16 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "el",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "ell"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "greek-night-large.png"
     },
@@ -271,6 +331,18 @@
         "height_px": 156
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "japan",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "jpn"
+        }
+      },
       "variant": "clean-36px",
       "image": "japanese-clean.png"
     },
@@ -319,6 +391,18 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "japan",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "jpn"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "japanese-warm-small.png"
     },
@@ -367,6 +451,18 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "japan",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "jpn"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "japanese-night-large.png"
     },
@@ -394,6 +490,18 @@
         "height_px": 158
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "ch",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "chi_sim+chi_tra"
+        }
+      },
       "variant": "clean-36px",
       "image": "mandarin-han-clean.png"
     },
@@ -442,6 +550,18 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "ch",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "chi_sim+chi_tra"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "mandarin-han-warm-small.png"
     },
@@ -490,6 +610,18 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "ch",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "chi_sim+chi_tra"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "mandarin-han-night-large.png"
     },
@@ -517,6 +649,16 @@
         "height_px": 184
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ar",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "ara"
+        }
+      },
       "variant": "clean-36px",
       "image": "arabic-rtl-clean.png"
     },
@@ -565,6 +707,16 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ar",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "ara"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "arabic-rtl-warm-small.png"
     },
@@ -613,6 +765,16 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ar",
+          "model": "PP-OCRv5"
+        },
+        "tesseract": {
+          "language": "ara"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "arabic-rtl-night-large.png"
     },
@@ -640,6 +802,13 @@
         "height_px": 152
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": null,
+        "tesseract": {
+          "language": "heb"
+        }
+      },
       "variant": "clean-36px",
       "image": "hebrew-rtl-clean.png"
     },
@@ -688,6 +857,13 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": null,
+        "tesseract": {
+          "language": "heb"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "hebrew-rtl-warm-small.png"
     },
@@ -736,6 +912,13 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": null,
+        "tesseract": {
+          "language": "heb"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "hebrew-rtl-night-large.png"
     },
@@ -763,6 +946,16 @@
         "height_px": 164
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ka",
+          "model": "PP-OCRv3"
+        },
+        "tesseract": {
+          "language": "kat"
+        }
+      },
       "variant": "clean-36px",
       "image": "georgian-mkhedruli-clean.png"
     },
@@ -811,6 +1004,16 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ka",
+          "model": "PP-OCRv3"
+        },
+        "tesseract": {
+          "language": "kat"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "georgian-mkhedruli-warm-small.png"
     },
@@ -859,6 +1062,16 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": null,
+        "paddleocr": {
+          "language": "ka",
+          "model": "PP-OCRv3"
+        },
+        "tesseract": {
+          "language": "kat"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "georgian-mkhedruli-night-large.png"
     },
@@ -886,6 +1099,18 @@
         "height_px": 162
       },
       "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "az",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "aze"
+        }
+      },
       "variant": "clean-36px",
       "image": "azerbaijani-latin-clean.png"
     },
@@ -934,6 +1159,18 @@
           "fill": "#8EC5D1"
         }
       ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "az",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "aze"
+        }
+      },
       "variant": "warm-28px-serif-objects",
       "image": "azerbaijani-latin-warm-small.png"
     },
@@ -982,6 +1219,18 @@
           "fill": "#5BC0BE"
         }
       ],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "az",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "aze"
+        }
+      },
       "variant": "night-44px-objects",
       "image": "azerbaijani-latin-night-large.png"
     }

@@ -297,6 +297,62 @@ SAMPLE_VARIANTS = (
     },
 )
 
+SCRIPT_RECOGNITION = {
+    "ru": {
+        "vulkanocr": None,
+        "paddleocr": {"language": "ru", "model": "PP-OCRv5"},
+        "tesseract": {"language": "rus"},
+    },
+    "el": {
+        "vulkanocr": None,
+        "paddleocr": {"language": "el", "model": "PP-OCRv5"},
+        "tesseract": {"language": "ell"},
+    },
+    "ja": {
+        "vulkanocr": {"model": "v6-medium"},
+        "paddleocr": {"language": "japan", "model": "PP-OCRv6"},
+        "tesseract": {"language": "jpn"},
+    },
+    "zh": {
+        "vulkanocr": {"model": "v6-medium"},
+        "paddleocr": {"language": "ch", "model": "PP-OCRv6"},
+        "tesseract": {"language": "chi_sim+chi_tra"},
+    },
+    "ar": {
+        "vulkanocr": None,
+        "paddleocr": {"language": "ar", "model": "PP-OCRv5"},
+        "tesseract": {"language": "ara"},
+    },
+    "he": {
+        "vulkanocr": None,
+        "paddleocr": None,
+        "tesseract": {"language": "heb"},
+    },
+    "ka": {
+        "vulkanocr": None,
+        "paddleocr": {"language": "ka", "model": "PP-OCRv3"},
+        "tesseract": {"language": "kat"},
+    },
+    "az": {
+        "vulkanocr": {"model": "v6-medium"},
+        "paddleocr": {"language": "az", "model": "PP-OCRv6"},
+        "tesseract": {"language": "aze"},
+    },
+}
+
+BENCHMARK_RECOGNITION = {
+    "en": {
+        "vulkanocr": {"model": "v6-medium"},
+        "paddleocr": {"language": "en", "model": "PP-OCRv6"},
+        "tesseract": {"language": "eng"},
+    },
+    "pt": {
+        "vulkanocr": {"model": "v6-medium"},
+        "paddleocr": {"language": "pt", "model": "PP-OCRv6"},
+        "tesseract": {"language": "por"},
+    },
+}
+
 
 def render(lines, font_path, size, width=900, pad=24):
     font = ImageFont.truetype(font_path, size)
@@ -426,6 +482,7 @@ def make_script_samples(output: pathlib.Path) -> int:
                         "height_px": height,
                     },
                     "background_objects": objects,
+                    "recognition": SCRIPT_RECOGNITION[document["language"]],
                     "variant": variant["name"],
                     "image": image,
                 }
@@ -516,6 +573,7 @@ def main(output: pathlib.Path | None = None) -> int:
                     "palette": {"foreground": "#000000", "background": "#FFFFFF"},
                     "size": {"font_px": font_px, "width_px": width, "height_px": height},
                     "background_objects": [],
+                    "recognition": BENCHMARK_RECOGNITION[document["language"]],
                     "variant": name,
                     "image": image,
                 }

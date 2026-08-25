@@ -8,7 +8,11 @@ import pytest
 from PIL import Image, ImageColor
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "benchmarks"))
-from corpus_schema import load_manifest, validate_manifest  # noqa: E402, I001
+from corpus_schema import (  # noqa: E402, I001
+    load_manifest,
+    require_engine_selections,
+    validate_manifest,
+)
 from make_corpus import main as make_corpus  # noqa: E402, I001
 from make_corpus import make_script_samples  # noqa: E402, I001
 
@@ -28,17 +32,22 @@ def _case() -> dict:
         "palette": {"foreground": "#000000", "background": "#FFFFFF"},
         "size": {"font_px": 28, "width_px": 900, "height_px": 140},
         "background_objects": [],
+        "recognition": {
+            "vulkanocr": {"model": "v6-medium"},
+            "paddleocr": {"language": "en", "model": "PP-OCRv6"},
+            "tesseract": {"language": "eng"},
+        },
         "variant": "clean-28px-sans",
         "image": "latin-clean.png",
     }
 
 
-def test_complete_version_one_manifest_is_valid():
-    validate_manifest({"schema_version": 1, "cases": [_case()]})
+def test_complete_version_two_manifest_is_valid():
+    validate_manifest({"schema_version": 2, "cases": [_case()]})
 
 
 def test_case_metadata_is_required_by_the_schema():
-    document = {"schema_version": 1, "cases": [_case()]}
+    document = {"schema_version": 2, "cases": [_case()]}
     del document["cases"][0]["background_objects"]
 
     with pytest.raises(ValueError, match="background_objects"):
@@ -47,16 +56,24 @@ def test_case_metadata_is_required_by_the_schema():
 
 def test_unknown_manifest_version_is_refused(tmp_path):
     path = tmp_path / "ground-truth.json"
-    path.write_text('{"schema_version": 2, "cases": []}', encoding="utf-8")
+    path.write_text('{"schema_version": 3, "cases": []}', encoding="utf-8")
 
-    with pytest.raises(ValueError, match="schema version 1"):
+    with pytest.raises(ValueError, match="schema version 2"):
         load_manifest(path)
 
 
 def test_duplicate_case_ids_are_refused():
     duplicate = deepcopy(_case())
     with pytest.raises(ValueError, match="case ids must be unique"):
-        validate_manifest({"schema_version": 1, "cases": [_case(), duplicate]})
+        validate_manifest({"schema_version": 2, "cases": [_case(), duplicate]})
+
+
+def test_runner_refuses_cases_without_its_declared_model():
+    unsupported = _case()
+    unsupported["recognition"]["vulkanocr"] = None
+
+    with pytest.raises(ValueError, match="no vulkanocr model.*latin-clean"):
+        require_engine_selections([unsupported], "vulkanocr")
 
 
 def test_generator_writes_a_schema_valid_manifest(tmp_path):
@@ -111,6 +128,7 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
         assert letter in azerbaijani["lines"][0]
     assert (tmp_path / azerbaijani["image"]).is_file()
     assert len(document["cases"]) == 24
+    assert all("recognition" in case for case in document["cases"])
     assert {case["size"]["font_px"] for case in document["cases"]} == {28, 36, 44}
     assert len({tuple(case["palette"].values()) for case in document["cases"]}) == 3
     assert len({case["font"]["family"] for case in document["cases"]}) >= 8

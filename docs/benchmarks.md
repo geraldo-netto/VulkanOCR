@@ -12,10 +12,15 @@ exact ground truth: three sizes, three fonts, 5° and 12° skew, blur, noise,
 JPEG q30, and a faded scan. Synthetic on purpose — a comparison needs
 identical inputs and exact truth for every engine. A hand-transcribed scan
 holdout is still the honest acceptance corpus; this is not it and says so.
-`ground-truth.json` uses corpus schema version 1 and records each case's
+`ground-truth.json` uses corpus schema version 2 and records each case's
 script, BCP 47 language, exact line sequence, font/licence, palette, rendered
 size, background objects, variant, and relative image path. Generation fails
 before writing an invalid manifest.
+Each case also declares VulkanOCR, PaddleOCR, and Tesseract model/language
+selection. Runners warm and dispatch per declared selection and refuse the
+whole corpus if any case has no model for that engine; they never substitute a
+convenient default silently. Result case ids are checked against the manifest
+before the document is written and again before comparison.
 
 `benchmarks/scoring.py` scores a read: CER and WER as total edit distance over
 total length (never a mean of per-image rates), whitespace-normalised, NFC,

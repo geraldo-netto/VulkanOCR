@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SCHEMA_PATH = Path(__file__).with_name("corpus-case.schema.json")
 
 
@@ -20,6 +20,17 @@ def load_manifest(path: Path) -> dict:
 
 def load_cases(path: Path) -> list[dict]:
     return load_manifest(path)["cases"]
+
+
+def require_engine_selections(cases: list[dict], engine: str) -> list[dict]:
+    missing = [
+        case["id"]
+        for case in cases
+        if not isinstance(case.get("recognition"), dict) or case["recognition"].get(engine) is None
+    ]
+    if missing:
+        raise ValueError(f"no {engine} model is declared for cases {missing}")
+    return [case["recognition"][engine] for case in cases]
 
 
 def validate_manifest(document: dict) -> None:
@@ -50,6 +61,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "load_cases",
     "load_manifest",
+    "require_engine_selections",
     "validate_manifest",
     "write_manifest",
 ]
