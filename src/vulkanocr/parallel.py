@@ -44,6 +44,7 @@ def _wire_components(
     engine_factory: Callable[..., PrimaryEngine] | None,
     fleet_factory: Callable[..., WorkerFleet] | None,
     worker_ready_timeout_s: float,
+    worker_response_timeout_s: float,
 ) -> _ParallelComponents:
     """Concrete construction kept outside OCR orchestration."""
     if runtime is None:
@@ -73,6 +74,7 @@ def _wire_components(
                 devices,
                 resolved,
                 ready_timeout_s=worker_ready_timeout_s,
+                response_timeout_s=worker_response_timeout_s,
             )
         else:
             fleet = fleet_factory(models, devices, resolved)
@@ -106,6 +108,7 @@ class ParallelOcr:
         engine_factory: Callable[..., PrimaryEngine] | None = None,
         fleet_factory: Callable[..., WorkerFleet] | None = None,
         worker_ready_timeout_s: float = 30.0,
+        worker_response_timeout_s: float = 120.0,
     ):
         components = _wire_components(
             models,
@@ -116,6 +119,7 @@ class ParallelOcr:
             engine_factory=engine_factory,
             fleet_factory=fleet_factory,
             worker_ready_timeout_s=worker_ready_timeout_s,
+            worker_response_timeout_s=worker_response_timeout_s,
         )
         self._options = components.options
         self._primary = components.primary

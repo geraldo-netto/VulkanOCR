@@ -5,6 +5,7 @@ from queue import Queue
 from types import SimpleNamespace
 from typing import cast
 
+import numpy as np
 import pytest
 
 from vulkanocr.device import VulkanDevice
@@ -78,6 +79,8 @@ def _fleet(replies, devices, processes):
     }
     fleet._names = {device.index: device.name for device in devices}
     fleet._costs = dict.fromkeys(fleet._names, 1.0)
+    fleet._inflight = {}
+    fleet._response_timeout_s = 120.0
     fleet._closed = False
     return fleet
 
@@ -194,3 +197,20 @@ def test_live_silent_worker_hits_configured_startup_deadline_and_closes_fleet():
     assert context.queues[1].sent == [None]
     assert all(queue.closed and queue.cancelled for queue in context.queues)
     assert all(not process.is_alive() for process in context.processes)
+
+
+def test_live_silent_worker_hits_inference_response_deadline():
+    fleet = _fleet(
+        FakeQueue(),
+        [SimpleNamespace(index=0, name="Silent GPU")],
+        [FakeProcess(alive=True)],
+    )
+    fleet._response_timeout_s = 0.01
+    fleet.send(0, 4, 7, np.zeros((48, 96, 3), dtype=np.uint8))
+
+    with pytest.raises(OcrEngineError) as caught:
+        fleet.answer()
+
+    assert caught.value.code == "worker-response-timeout"
+    assert "0.01 seconds" in caught.value.detail
+    assert (4, 7) in fleet._inflight

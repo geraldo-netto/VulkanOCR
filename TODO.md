@@ -35,7 +35,6 @@
 | VOCR-0105 | open | medium | s | Validate detection inference output rank and probability-map dimensions before contour processing, with stable errors for incompatible model ports. |
 | VOCR-0106 | open | medium | s | Validate recognition inference output rank and timestep/class dimensions before CTC decoding, with stable errors for incompatible model ports. |
 | VOCR-0107 | open | medium | s | Translate ncnn input/extract exceptions and return codes to stage-specific `OcrEngineError` values and make the CLI catch errors raised during reads. |
-| VOCR-0111 | open | high | s | Add an inference-response watchdog based on in-flight jobs so a live worker that stops replying becomes a stable timeout instead of an endless read. |
 | VOCR-0112 | open | high | s | Retire non-responsive workers, discard their outstanding generation safely, and add alive-but-silent worker regressions for startup and inference. |
 | VOCR-0113 | open | high | s | Preserve ground-truth and observed text as line sequences in corpus result documents instead of joining each page before scoring. |
 | VOCR-0114 | open | high | s | Implement the selected reading-order policy, including order-independent line alignment when order is excluded, while preserving aggregate CER and WER arithmetic. |

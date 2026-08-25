@@ -16,6 +16,7 @@ from .options import InferenceOptions
 
 _PROBE_COLUMNS = 96
 _DEFAULT_READY_TIMEOUT_S = 30.0
+_DEFAULT_RESPONSE_TIMEOUT_S = 120.0
 
 
 def _timeout(error: tuple[str, str] | None) -> None:
@@ -33,6 +34,12 @@ def _message_wait(deadline: float | None, timeout_error: tuple[str, str] | None)
     return min(0.5, remaining)
 
 
+def _positive_timeout(name: str, value: float) -> float:
+    if value <= 0:
+        raise ValueError(f"{name} must be positive")
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class WorkerAnswer:
     device_index: int
@@ -40,6 +47,12 @@ class WorkerAnswer:
     crop_index: int
     result: tuple[str, float]
     elapsed_ms: float
+
+
+@dataclass(frozen=True, slots=True)
+class _InFlightJob:
+    device_index: int
+    deadline: float
 
 
 class WorkerFleet(Protocol):
@@ -118,11 +131,12 @@ class MultiprocessingWorkerFleet:
         context: Any = None,
         target=worker_main,
         ready_timeout_s: float = _DEFAULT_READY_TIMEOUT_S,
+        response_timeout_s: float = _DEFAULT_RESPONSE_TIMEOUT_S,
     ):
         if not devices:
             raise ValueError("a worker fleet requires at least one device")
-        if ready_timeout_s <= 0:
-            raise ValueError("ready_timeout_s must be positive")
+        ready_timeout_s = _positive_timeout("ready_timeout_s", ready_timeout_s)
+        response_timeout_s = _positive_timeout("response_timeout_s", response_timeout_s)
         self._context = context or mp.get_context("spawn")
         self._replies = self._context.Queue()
         self._devices = {device.index: device for device in devices}
@@ -130,6 +144,8 @@ class MultiprocessingWorkerFleet:
         self._processes: dict[int, Any] = {}
         self._names: dict[int, str] = {}
         self._costs: dict[int, float] = {}
+        self._inflight: dict[tuple[int, int], _InFlightJob] = {}
+        self._response_timeout_s = response_timeout_s
         self._closed = False
         try:
             for device in devices:
@@ -184,12 +200,24 @@ class MultiprocessingWorkerFleet:
                 "worker-unavailable", f"worker {device_index} is unavailable"
             ) from None
         channel.put((generation, crop_index, patch))
+        self._inflight[generation, crop_index] = _InFlightJob(
+            device_index,
+            time.monotonic() + self._response_timeout_s,
+        )
 
     def answer(self) -> WorkerAnswer:
-        message = self._next_message()
+        deadline = min((job.deadline for job in self._inflight.values()), default=None)
+        message = self._next_message(
+            deadline=deadline,
+            timeout_error=(
+                "worker-response-timeout",
+                f"recognition did not finish within {self._response_timeout_s:g} seconds",
+            ),
+        )
         if message[0] != "done":
             raise OcrEngineError("worker-protocol", f"expected done, received {message[0]}")
         _kind, index, generation, crop_index, result, elapsed = message
+        self._inflight.pop((generation, crop_index), None)
         return WorkerAnswer(index, generation, crop_index, result, elapsed)
 
     def update_cost(self, device_index: int, cost: float) -> None:
