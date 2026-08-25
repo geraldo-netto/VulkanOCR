@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from vulkanocr import InferenceOptions
+from vulkanocr import PRECISIONS, InferenceOptions, options_for_precision
 
 
 def test_defaults_state_existing_fp32_and_int8_runtime_policy():
@@ -41,3 +41,15 @@ def test_options_are_immutable():
     attribute = "use_fp16_storage"
     with pytest.raises(FrozenInstanceError):
         setattr(options, attribute, True)
+
+
+def test_user_facing_precision_names_map_to_explicit_options():
+    assert PRECISIONS == ("fp32", "fp16", "int8")
+    assert options_for_precision("fp32") == InferenceOptions()
+    assert options_for_precision("fp16") == InferenceOptions.fp16()
+    assert options_for_precision("int8") == InferenceOptions.int8()
+
+
+def test_unknown_precision_is_refused_by_name():
+    with pytest.raises(ValueError, match="unknown precision"):
+        options_for_precision("bf16")

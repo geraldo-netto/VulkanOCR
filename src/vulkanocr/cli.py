@@ -13,7 +13,14 @@ import time
 
 import cv2
 
-from vulkanocr import CATALOG, DEFAULT_MODEL, OcrEngine, models_for
+from vulkanocr import (
+    CATALOG,
+    DEFAULT_MODEL,
+    PRECISIONS,
+    OcrEngine,
+    models_for,
+    options_for_precision,
+)
 from vulkanocr.device import HardwareVulkanUnavailableError
 from vulkanocr.engine import OcrEngineError
 from vulkanocr.proof import busy_sampler
@@ -21,14 +28,15 @@ from vulkanocr.proof import busy_sampler
 
 def _reader(arguments):
     """The engine the flags ask for: one device, or one process per device."""
+    options = options_for_precision(arguments.precision)
     if arguments.all_gpus:
         from .parallel import ParallelOcr  # noqa: PLC0415 - spawns worker processes
 
-        return ParallelOcr(models_for(arguments.models))
-    return OcrEngine(models_for(arguments.models))
+        return ParallelOcr(models_for(arguments.models), options=options)
+    return OcrEngine(models_for(arguments.models), options=options)
 
 
-def _arguments() -> argparse.Namespace:
+def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("image")
     parser.add_argument(
@@ -48,7 +56,13 @@ def _arguments() -> argparse.Namespace:
         choices=sorted(CATALOG),
         help=f"model set to run (default: {DEFAULT_MODEL})",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--precision",
+        choices=PRECISIONS,
+        default="fp32",
+        help="ncnn execution precision (default: fp32)",
+    )
+    return parser.parse_args(argv)
 
 
 def main() -> int:
@@ -67,6 +81,7 @@ def main() -> int:
     except (OcrEngineError, HardwareVulkanUnavailableError) as error:
         raise SystemExit(str(error)) from error
     print(f"models: {arguments.models} — {CATALOG[arguments.models].note}")
+    print(f"precision: {arguments.precision}")
     print(f"device: {engine.device_name}")
     with engine, busy_sampler() as samples:
         result, first_ms, timings = _timed_reads(engine, rgb, arguments.repeat)

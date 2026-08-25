@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
+
+Precision = Literal["fp32", "fp16", "int8"]
+PRECISIONS: tuple[Precision, ...] = ("fp32", "fp16", "int8")
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,4 +42,15 @@ class InferenceOptions:
         return cls(use_int8_arithmetic=True)
 
 
-__all__ = ["InferenceOptions"]
+def options_for_precision(precision: str) -> InferenceOptions:
+    """Execution options for one user-facing precision name."""
+    if precision == "fp16":
+        return InferenceOptions.fp16()
+    if precision == "int8":
+        return InferenceOptions.int8()
+    if precision == "fp32":
+        return InferenceOptions()
+    raise ValueError(f"unknown precision {precision!r}; expected one of {', '.join(PRECISIONS)}")
+
+
+__all__ = ["PRECISIONS", "InferenceOptions", "Precision", "options_for_precision"]

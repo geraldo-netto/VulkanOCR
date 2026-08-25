@@ -20,7 +20,8 @@ reading order ignored. It is unit-tested in `tests/test_scoring.py`.
 ```sh
 .venv/bin/python benchmarks/make_corpus.py /tmp/corpus
 .venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium
-.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --fp16
+.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision fp16
+.venv/bin/python benchmarks/read_with_vulkanocr.py /tmp/corpus v6-medium --precision int8
 python3 benchmarks/read_with_tesseract.py /tmp/corpus 6
 <paddle-venv>/bin/python benchmarks/read_with_paddleocr.py /tmp/corpus
 python3 benchmarks/compare_engines.py /tmp

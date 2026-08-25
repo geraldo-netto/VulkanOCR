@@ -33,9 +33,11 @@ PaddlePaddle's Apache-2.0 weights: Avafly (MIT) for PP-OCRv6, nihui (BSD-3)
 for PP-OCRv5. Neither upstream is modified.
 
 By default fp16 packed/storage/arithmetic are all disabled, matching the
-service's Vulkan policy; a `use_fp16` constructor knob (and `--fp16` on the
-corpus runner) exists for measurement, where it bought 1.5x on recognition at
-no measured accuracy cost (`docs/benchmarks.md`).
+service's Vulkan policy. `InferenceOptions` states fp16 and int8 policy for
+every net; `--precision fp32|fp16|int8` exposes the same choice in the CLI and
+corpus runner. fp16 bought 1.5x on recognition at no measured accuracy cost
+(`docs/benchmarks.md`); int8 requires a quantized graph and does not transform
+the float catalog entries.
 
 ## Run
 

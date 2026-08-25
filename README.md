@@ -86,8 +86,14 @@ git clone https://github.com/nihui/ncnn-android-ppocrv5 nihui-port  # PP-OCRv5, 
 ```sh
 .venv/bin/vulkanocr samples/sample-applet.png                # PP-OCRv6 medium
 .venv/bin/vulkanocr samples/sample-applet.png --models v6-tiny
+.venv/bin/vulkanocr samples/sample-applet.png --precision fp16
+.venv/bin/vulkanocr samples/sample-applet.png --precision int8  # quantized graphs
 .venv/bin/python -m pytest -q                                # 74 tests; live ones skip without a GPU
 ```
+
+`--precision fp32|fp16|int8` states every ncnn precision option explicitly.
+`int8` enables quantized arithmetic; it does not quantize a float graph, so use
+it with a quantized model profile.
 
 The command prints the device it chose, the lines with their coordinates and
 confidence, and the GPU's `gpu_busy_percent` while it works — so "it ran on
