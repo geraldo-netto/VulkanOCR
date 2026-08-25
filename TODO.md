@@ -38,6 +38,7 @@
 | VOCR-0126 | blocked | high | s | Convert or acquire and checksum-pin the approved Hebrew recognition graph after its model and provenance route are selected. |
 | VOCR-0127 | blocked | high | s | Add the approved Hebrew recognizer and dictionary as a catalog profile after compatible model artifacts exist. |
 | VOCR-0128 | blocked | high | s | Run Hebrew corpus acceptance and publish accuracy limitations after the approved Hebrew catalog profile is runnable. |
+| VOCR-0129 | blocked | medium | m | Replace whole-upstream model downloads with a checksum-pinned component model store and explicit installer for detector, recognizer, dictionary, and orientation artifacts; blocked on approving selective extraction, upstream split assets, or VulkanOCR-hosted per-profile assets for Avafly's monolithic release archive. |
 
 ## Rejected / Won't fix
 
