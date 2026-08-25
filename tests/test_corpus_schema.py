@@ -14,6 +14,7 @@ from corpus_schema import (  # noqa: E402, I001
     validate_manifest,
 )
 from make_corpus import main as make_corpus  # noqa: E402, I001
+from make_corpus import make_orientation_samples  # noqa: E402, I001
 from make_corpus import make_script_samples  # noqa: E402, I001
 
 
@@ -145,3 +146,20 @@ def test_script_sample_generator_writes_exact_russian_metadata(tmp_path):
         assert all(image.getpixel((x, height - 1)) == background for x in range(width))
         assert all(image.getpixel((0, y)) == background for y in range(height))
         assert all(image.getpixel((width - 1, y)) == background for y in range(height))
+
+
+def test_orientation_generator_writes_all_cardinal_cases(tmp_path):
+    assert make_orientation_samples(tmp_path) == 0
+
+    document = load_manifest(tmp_path / "ground-truth.json")
+    validate_manifest(document)
+    assert {case["variant"] for case in document["cases"]} == {
+        "orientation-0deg",
+        "orientation-90deg",
+        "orientation-180deg",
+        "orientation-270deg",
+    }
+    assert all(
+        case["recognition"]["vulkanocr"] == {"model": "v6-medium"} for case in document["cases"]
+    )
+    assert all((tmp_path / case["image"]).is_file() for case in document["cases"])

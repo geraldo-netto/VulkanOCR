@@ -2,14 +2,17 @@
 
 from types import SimpleNamespace
 
+import cv2
 import numpy as np
 import pytest
 
+from vulkanocr.detection import TextRegion, _oriented
 from vulkanocr.orientation import (
     classify_patch_orientation,
     prepare_orientation_patch,
     rotate_patch,
 )
+from vulkanocr.recognition import crop_region
 
 
 class FakeMat:
@@ -68,3 +71,43 @@ def test_180_degree_correction_reverses_both_patch_axes():
 def test_smart_resize_always_returns_classifier_shape(width):
     prepared = prepare_orientation_patch(np.zeros((48, width, 3), dtype=np.uint8))
     assert prepared.shape == (80, 160, 3)
+
+
+def _detected_text_region(rgb: np.ndarray) -> TextRegion:
+    mask = np.any(rgb < 200, axis=2).astype(np.uint8) * 255
+    contours, _hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    points = np.concatenate(contours)
+    (center_x, center_y), (width, height), angle = cv2.minAreaRect(points)
+    width, height, angle, vertical = _oriented(width, height, angle)
+    return TextRegion(center_x, center_y, width + 15, height + 15, angle, vertical, 1.0)
+
+
+@pytest.mark.parametrize(
+    ("degrees", "quarter_turns", "correction"),
+    [(0, 0, 0), (90, 3, 0), (180, 2, 180), (270, 1, 180)],
+)
+def test_cardinal_page_crops_become_upright_with_binary_correction(
+    degrees, quarter_turns, correction
+):
+    page = np.full((180, 760, 3), 255, dtype=np.uint8)
+    cv2.putText(
+        page,
+        "Vulkan rotate 1234",
+        (35, 105),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.6,
+        (0, 0, 0),
+        3,
+        cv2.LINE_AA,
+    )
+    turned = np.rot90(page, quarter_turns).copy()
+    patch = crop_region(turned, _detected_text_region(turned))
+    reference = crop_region(page, _detected_text_region(page))
+    patch = cv2.resize(patch, (reference.shape[1], reference.shape[0]))
+
+    corrected = rotate_patch(patch, correction)
+    wrong = rotate_patch(patch, 180 - correction)
+    corrected_error = np.mean(np.abs(corrected.astype(np.float32) - reference))
+    wrong_error = np.mean(np.abs(wrong.astype(np.float32) - reference))
+
+    assert corrected_error < wrong_error, degrees

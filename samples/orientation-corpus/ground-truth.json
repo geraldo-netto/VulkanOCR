@@ -1,0 +1,157 @@
+{
+  "schema_version": 2,
+  "cases": [
+    {
+      "id": "orientation-000deg",
+      "script": "Latn",
+      "language": "en",
+      "direction": "ltr",
+      "lines": [
+        "Vulkan rotate 1234"
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 640,
+        "height_px": 123
+      },
+      "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "en",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "eng"
+        }
+      },
+      "variant": "orientation-0deg",
+      "image": "orientation-000deg.png"
+    },
+    {
+      "id": "orientation-090deg",
+      "script": "Latn",
+      "language": "en",
+      "direction": "ltr",
+      "lines": [
+        "Vulkan rotate 1234"
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 123,
+        "height_px": 640
+      },
+      "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "en",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "eng"
+        }
+      },
+      "variant": "orientation-90deg",
+      "image": "orientation-090deg.png"
+    },
+    {
+      "id": "orientation-180deg",
+      "script": "Latn",
+      "language": "en",
+      "direction": "ltr",
+      "lines": [
+        "Vulkan rotate 1234"
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 640,
+        "height_px": 123
+      },
+      "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "en",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "eng"
+        }
+      },
+      "variant": "orientation-180deg",
+      "image": "orientation-180deg.png"
+    },
+    {
+      "id": "orientation-270deg",
+      "script": "Latn",
+      "language": "en",
+      "direction": "ltr",
+      "lines": [
+        "Vulkan rotate 1234"
+      ],
+      "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": "Bitstream Vera Fonts Copyright"
+      },
+      "palette": {
+        "foreground": "#000000",
+        "background": "#FFFFFF"
+      },
+      "size": {
+        "font_px": 36,
+        "width_px": 123,
+        "height_px": 640
+      },
+      "background_objects": [],
+      "recognition": {
+        "vulkanocr": {
+          "model": "v6-medium"
+        },
+        "paddleocr": {
+          "language": "en",
+          "model": "PP-OCRv6"
+        },
+        "tesseract": {
+          "language": "eng"
+        }
+      },
+      "variant": "orientation-270deg",
+      "image": "orientation-270deg.png"
+    }
+  ]
+}

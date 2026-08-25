@@ -353,6 +353,19 @@ BENCHMARK_RECOGNITION = {
     },
 }
 
+ORIENTATION_DOCUMENT = {
+    "script": "Latn",
+    "language": "en",
+    "direction": "ltr",
+    "lines": ["Vulkan rotate 1234"],
+    "font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "font": {
+        "family": "DejaVu Sans",
+        "file": "DejaVuSans.ttf",
+        "license": FONT_LICENSE,
+    },
+}
+
 
 def render(lines, font_path, size, width=900, pad=24):
     font = ImageFont.truetype(font_path, size)
@@ -495,6 +508,41 @@ def make_script_samples(output: pathlib.Path) -> int:
     return 0
 
 
+def make_orientation_samples(output: pathlib.Path) -> int:
+    """Four cardinal page rotations for end-to-end orientation acceptance."""
+    output.mkdir(parents=True, exist_ok=True)
+    base = render_script_document(ORIENTATION_DOCUMENT, font_px=36, pad=48)
+    cases = []
+    for degrees, quarter_turns in ((0, 0), (90, 3), (180, 2), (270, 1)):
+        array = np.rot90(base, quarter_turns).copy()
+        case_id = f"orientation-{degrees:03d}deg"
+        image = f"{case_id}.png"
+        cv2.imwrite(str(output / image), array[:, :, ::-1])
+        height, width = array.shape[:2]
+        cases.append(
+            {
+                "id": case_id,
+                "script": ORIENTATION_DOCUMENT["script"],
+                "language": ORIENTATION_DOCUMENT["language"],
+                "direction": ORIENTATION_DOCUMENT["direction"],
+                "lines": ORIENTATION_DOCUMENT["lines"],
+                "font": ORIENTATION_DOCUMENT["font"],
+                "palette": {"foreground": "#000000", "background": "#FFFFFF"},
+                "size": {"font_px": 36, "width_px": width, "height_px": height},
+                "background_objects": [],
+                "recognition": BENCHMARK_RECOGNITION["en"],
+                "variant": f"orientation-{degrees}deg",
+                "image": image,
+            }
+        )
+    write_manifest(
+        output / "ground-truth.json",
+        {"schema_version": SCHEMA_VERSION, "cases": cases},
+    )
+    print(f"{len(cases)} orientation samples -> {output}")
+    return 0
+
+
 def skew(array, degrees):
     height, width = array.shape[:2]
     matrix = cv2.getRotationMatrix2D((width / 2, height / 2), degrees, 1.0)
@@ -590,4 +638,6 @@ def main(output: pathlib.Path | None = None) -> int:
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--script-samples":
         sys.exit(make_script_samples(pathlib.Path(sys.argv[2])))
+    if len(sys.argv) == 3 and sys.argv[1] == "--orientation-samples":
+        sys.exit(make_orientation_samples(pathlib.Path(sys.argv[2])))
     sys.exit(main())

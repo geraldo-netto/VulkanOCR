@@ -106,6 +106,31 @@ def test_the_30_to_60_degree_band_reads_text_instead_of_noise(engine):
         assert "1234" in text, (degrees, text)
 
 
+@needs_gpu
+@pytest.mark.parametrize(
+    ("degrees", "quarter_turns"),
+    [(0, 0), (90, 3), (180, 2), (270, 1)],
+)
+def test_cardinal_page_orientations_read_upright(engine, degrees, quarter_turns):
+    page = np.full((180, 760, 3), 255, np.uint8)
+    cv2.putText(
+        page,
+        "Vulkan rotate 1234",
+        (35, 105),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.6,
+        (0, 0, 0),
+        3,
+        cv2.LINE_AA,
+    )
+    turned = np.rot90(page, quarter_turns).copy()
+    rgb = np.ascontiguousarray(turned[:, :, ::-1])
+
+    text = " ".join(line.text for line in engine.read(rgb).lines)
+
+    assert "Vulkan rotate 1234" in text, (degrees, text)
+
+
 def test_the_gpu_pool_reads_exactly_what_one_gpu_reads(engine):
     """Device count must never change the answer (VOCR-0034). On a machine
     with one hardware device the pool falls back to the single engine, so
