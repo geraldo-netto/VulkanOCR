@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -12,6 +13,57 @@ from .engine import OcrEngine, OcrEngineError, OcrModels, OcrResult, assemble_re
 from .options import InferenceOptions
 from .scheduling import CropScheduler
 from .workers import MultiprocessingWorkerFleet, WorkerFleet
+
+
+class PrimaryEngine(Protocol):
+    @property
+    def device_name(self) -> str: ...
+
+    def crops(self, rgb: np.ndarray) -> list[tuple]: ...
+
+    def recognise(self, patch: np.ndarray) -> tuple[str, float]: ...
+
+    def close(self) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _ParallelComponents:
+    options: InferenceOptions
+    primary: PrimaryEngine
+    fleet: WorkerFleet | None
+
+
+def _wire_components(
+    models: OcrModels,
+    *,
+    use_fp16: bool | None,
+    options: InferenceOptions | None,
+    runtime: Any,
+    device_provider: Callable[[Any], tuple] | None,
+    engine_factory: Callable[..., PrimaryEngine] | None,
+    fleet_factory: Callable[..., WorkerFleet] | None,
+) -> _ParallelComponents:
+    """Concrete construction kept outside OCR orchestration."""
+    if runtime is None:
+        try:
+            import ncnn as runtime  # type: ignore[no-redef]  # noqa: PLC0415
+        except ImportError as error:  # pragma: no cover
+            raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
+    if options is not None and use_fp16 is not None:
+        raise OcrEngineError("options-conflict", "options cannot be combined with use_fp16")
+    resolved = options or (InferenceOptions.fp16() if use_fp16 else InferenceOptions())
+    devices = tuple((device_provider or hardware_devices)(runtime))
+    build_engine = engine_factory or OcrEngine
+    build_fleet = fleet_factory or MultiprocessingWorkerFleet
+    primary = build_engine(models, runtime=runtime, options=resolved, device=devices[0])
+    if len(devices) == 1:
+        return _ParallelComponents(resolved, primary, None)
+    try:
+        fleet = build_fleet(models, devices, resolved)
+    except BaseException:
+        primary.close()
+        raise
+    return _ParallelComponents(resolved, primary, fleet)
 
 
 class ParallelOcr:
@@ -25,36 +77,23 @@ class ParallelOcr:
         options: InferenceOptions | None = None,
         runtime: Any = None,
         device_provider: Callable[[Any], tuple] | None = None,
-        engine_factory: Callable[..., Any] | None = None,
+        engine_factory: Callable[..., PrimaryEngine] | None = None,
         fleet_factory: Callable[..., WorkerFleet] | None = None,
     ):
-        if runtime is None:
-            try:
-                import ncnn as runtime  # type: ignore[no-redef]  # noqa: PLC0415
-            except ImportError as error:  # pragma: no cover
-                raise OcrEngineError("runtime-missing", "ncnn is not installed") from error
-        if options is not None and use_fp16 is not None:
-            raise OcrEngineError("options-conflict", "options cannot be combined with use_fp16")
-        self._options = options or (InferenceOptions.fp16() if use_fp16 else InferenceOptions())
-        devices = tuple((device_provider or hardware_devices)(runtime))
-        build_engine = engine_factory or OcrEngine
-        build_fleet = fleet_factory or MultiprocessingWorkerFleet
-        self._primary = build_engine(
+        components = _wire_components(
             models,
+            use_fp16=use_fp16,
+            options=options,
             runtime=runtime,
-            options=self._options,
-            device=devices[0],
+            device_provider=device_provider,
+            engine_factory=engine_factory,
+            fleet_factory=fleet_factory,
         )
-        self._fleet: WorkerFleet | None = None
+        self._options = components.options
+        self._primary = components.primary
+        self._fleet = components.fleet
         self._generation = 0
         self._closed = False
-        if len(devices) == 1:
-            return
-        try:
-            self._fleet = build_fleet(models, devices, self._options)
-        except BaseException:
-            self.close()
-            raise
 
     @property
     def device_names(self) -> tuple[str, ...]:
@@ -126,4 +165,4 @@ class ParallelOcr:
         self.close()
 
 
-__all__ = ["ParallelOcr"]
+__all__ = ["ParallelOcr", "PrimaryEngine"]

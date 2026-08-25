@@ -33,7 +33,6 @@
 | VOCR-0094 | open | high | s | Make corpus runners select the declared language/model per case and refuse result sets whose case ids differ from the manifest. |
 | VOCR-0099 | open | medium | s | Compose named model profiles from detector and recognizer specifications so language-specific or quantized recognizers reuse an existing detector. |
 | VOCR-0100 | open | medium | s | Migrate `CATALOG`, `PORT_FACTS`, constructors, exports, and catalog tests to composed model profiles without changing existing names or defaults. |
-| VOCR-0103 | open | high | s | Reduce `ParallelOcr` to detection, scheduler/fleet coordination, and result assembly over the extracted interfaces. |
 | VOCR-0104 | open | medium | s | Replace `ParallelOcr` tests that allocate with `__new__` and overwrite private concrete fields with protocol-backed fakes using normal construction. |
 | VOCR-0105 | open | medium | s | Validate detection inference output rank and probability-map dimensions before contour processing, with stable errors for incompatible model ports. |
 | VOCR-0106 | open | medium | s | Validate recognition inference output rank and timestep/class dimensions before CTC decoding, with stable errors for incompatible model ports. |
